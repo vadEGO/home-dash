@@ -1,6 +1,6 @@
-# Reminders and shopping — Hermes handoff (0.6)
+# Reminders and shopping — Hermes handoff (0.7)
 
-Deploy the matching Mac service and APK 0.6.0-preview. The phone update alone cannot enable this feature. The existing HTTPS address, certificate and device token are retained. No additional service, cloud account or Telegram bot is required.
+Deploy the matching Mac service and APK 0.7.0-preview. The phone update alone cannot enable this feature. The existing HTTPS address, certificate and device token are retained. No additional service, cloud account or Telegram bot is required.
 
 ## Enable the workflow on the dedicated Mac
 
@@ -17,10 +17,10 @@ When the user asks in the authorised Telegram conversation to create a reminder 
 - Resolve each occurrence to a concrete ISO date/time, preferably with the correct Sydney UTC offset. The CLI accepts Sydney local ISO times without an offset, but rejects nonexistent or ambiguous daylight-saving transition times. Date-only reminders need a time before submission.
 - Write each operation to a private local JSON file outside Git and invoke the CLI using a safe argument list or shell quoting. Treat message text as data, never interpolate it into shell commands. No device token is needed for the local CLI.
 - Use a stable `request_id`, such as `telegram:<chat-id>:<message-id>:reminder:0` or `telegram:<chat-id>:<message-id>:shopping:1`. Reuse the identical operation on a retry; do not generate a new ID every time. Reusing an ID for changed content is rejected.
-- For "add milk and eggs", issue two shopping_add operations with separate IDs. Shopping items are deduplicated while unchecked after case/whitespace normalization. Preserve quantities in the title, e.g. "Milk — 2 litres"; quantities are not parsed or merged automatically.
+- For "add milk and eggs", issue two shopping_add operations with separate IDs. Shopping items are deduplicated while unchecked after case/whitespace normalization. Use integer `quantity` (1–999) and `category` (Groceries, Produce, Dairy, Household, Other). Keep units in the title, e.g. "Milk · 1 litre", quantity 2. Duplicate adds retain the existing quantity; to change it, use `shopping_update` with the current revision.
 - Confirm successful creation only after the CLI returns status `ok`. A normal reply to the user's initiating Telegram request may confirm the saved title/time. Do not send extra unsolicited Telegram reminders or create scheduled jobs.
-- For completion/cancellation, list current items first, identify the intended item, and supply its current revision. If matching is ambiguous, ask. `reminder_done` also cancels an upcoming reminder. `shopping_set` checks or unchecks an item. On a conflict, reload and reassess; never blindly retry using a newer revision.
-- Recurring reminders and arbitrary reminder edits are not implemented. Do not claim otherwise. A user-authorised reschedule can use `reminder_snooze` with a concrete due_at; it is not restricted to ten minutes by the CLI.
+- For completion/cancellation, list current items first, identify the intended item, and supply its current revision. If matching is ambiguous, ask. `reminder_done` completes a one-time reminder or skips to the next occurrence of a recurring one. Use `item_delete` to cancel a whole series. `shopping_set` checks or unchecks an item. On a conflict, reload and reassess; never blindly retry using a newer revision.
+- Recurring reminders support `repeat`: `none`, `daily`, `weekdays`, `weekly`, `monthly`. Set the first concrete due_at in Sydney. Arbitrary title/repeat edits are not implemented. A user-authorised reschedule can use `reminder_snooze` with a concrete due_at; it is not restricted to ten minutes by the CLI.
 
 Run from the reviewed repository checkout with Python 3.11.8+:
 
@@ -52,7 +52,7 @@ Shopping:
 {"request_id":"telegram:CHAT:MESSAGE:shopping:0","action":"shopping_add","title":"Milk"}
 ```
 
-Complete a reminder or cancel it before it is due:
+Complete a reminder (for a recurring series, advance to the next occurrence):
 
 ```json
 {"request_id":"telegram:CHAT:MESSAGE:done:0","action":"reminder_done","id":"ITEM-ID-FROM-LIST","expected_revision":1}
@@ -110,3 +110,25 @@ Hermes can delete an explicitly identified item using the existing CLI with its 
 ```
 
 CLI deletion commits immediately; the eight-second grace period belongs to the phone UI. Do not erase SQLite rows or replace the whole list. A stale revision is rejected. Update both APK and Mac service; an older Mac rejects unsupported deletes, which the phone reports and rolls back visibly.
+
+## Recurrence and shopping details (0.7)
+
+```json
+{"request_id":"telegram:CHAT:MESSAGE:weekly:0","action":"reminder_add","title":"Put the bins out","due_at":"2026-10-01T20:00:00+10:00","repeat":"weekly"}
+```
+
+```json
+{"request_id":"telegram:CHAT:MESSAGE:milk:0","action":"shopping_add","title":"Milk · 1 litre","quantity":2,"category":"Dairy"}
+```
+
+```json
+{"request_id":"telegram:CHAT:MESSAGE:quantity:0","action":"shopping_update","id":"ITEM-ID-FROM-LIST","expected_revision":1,"quantity":3,"category":"Dairy"}
+```
+
+The first due_at anchors the Sydney time and weekday/day of month. Done advances to the first occurrence after both the current due time and service time; missed occurrences do not create a backlog. Snooze shifts this occurrence without changing the series anchor. Monthly dates clamp to the last day of shorter months, then return to the original day. A spring DST gap shifts to the first valid minute; an autumn repeated time uses the first occurrence only. Delete cancels the series. Initial ambiguous/nonexistent form times still require a different time or explicit offset through the CLI.
+
+Offline Done immediately projects the next occurrence; the Mac reconciles it when the action arrives. Update the Mac before using these fields. The phone holds enhanced operations until it receives the `routines-v1` capability, avoiding silent loss against an older service. A recurrence is a stored foreground-dashboard schedule, not a Telegram or Android alarm.
+
+Shopping rows have quantity −/+ buttons and category headings. Categories are chosen at creation (Hermes can update them). Completed items stay collapsed under Completed, with Undo inside. Quiet hours and QR pairing are described in the deployment guide.
+
+Rollback: old releases can read the basic items table but ignore recurrence and quantity/category metadata. They may complete recurring reminders permanently. Avoid task mutations on an older service; restore the matching release and review reminders after rollback.

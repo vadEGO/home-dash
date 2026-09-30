@@ -7,11 +7,11 @@ function taskItems(){
  const items=(taskState.server?.items||[]).map(x=>({...x}));
  for(const op of taskState.pending){
   if(op.action==='reminder_add'||op.action==='shopping_add'){
-   if(!items.some(i=>i.id===op.id))items.push({id:op.id,kind:op.action==='reminder_add'?'reminder':'shopping',title:op.title,due_at:op.due_at||null,completed:0,revision:1,created_at:op.created_at});
+   if(!items.some(i=>i.id===op.id))items.push({id:op.id,kind:op.action==='reminder_add'?'reminder':'shopping',title:op.title,due_at:op.due_at||null,completed:0,revision:1,created_at:op.created_at,quantity:op.quantity||1,category:op.category||'Groceries',repeat:op.repeat||'none',repeat_anchor:op.due_at});
    continue;
   }
   const item=items.find(i=>i.id===op.id);if(!item||item.revision>op.expected_revision)continue;
-  if(op.action==='item_delete')item.deleted=true;if(op.action==='reminder_done')item.completed=1;if(op.action==='reminder_snooze')item.due_at=op.due_at;if(op.action==='shopping_set')item.completed=op.completed?1:0;item.revision=op.expected_revision+1;
+  if(op.action==='item_delete')item.deleted=true;if(op.action==='reminder_done'){if(item.repeat&&item.repeat!=='none'){item.due_at=Routines.nextDue(item.repeat_anchor||item.due_at,new Date(Math.max(Date.parse(op.queued_at)||Date.now(),Date.parse(item.due_at))).toISOString(),item.repeat);}else item.completed=1;}if(op.action==='shopping_update'){item.quantity=op.quantity??item.quantity;item.category=op.category??item.category;}if(op.action==='reminder_snooze')item.due_at=op.due_at;if(op.action==='shopping_set')item.completed=op.completed?1:0;item.revision=op.expected_revision+1;
  }
  return items.filter(i=>!i.deleted);
 }
@@ -19,13 +19,17 @@ function dueReminders(){return taskItems().filter(i=>i.kind==='reminder'&&!i.com
 function taskTime(value){return new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));}
 function taskID(){return `phone-${Date.now()}-${Array.from(crypto.getRandomValues(new Uint32Array(3)),v=>v.toString(16)).join('')}`;}
 function queueTask(item,action,fields={}){
- const op={request_id:taskID(),id:item.id,expected_revision:item.revision,action,...fields};
+ const op={request_id:taskID(),id:item.id,expected_revision:item.revision,queued_at:new Date().toISOString(),action,...fields};
  taskState.pending.push(op);taskState.message='';
  try{saveTasks();}catch(e){taskState.pending.pop();taskState.message='Could not save this action. Please try again.';renderTasks(true);return false;}
  renderTasks(true);flushTasks();return true;
 }
 function flushTasks(){
  if(!taskState.pending.length||taskState.blockedRequest===taskState.pending[0].request_id||!window.DashboardNative?.sendAction)return;
+ const op=taskState.pending[0],needsRoutines=op.action==='shopping_update'||op.action==='reminder_add'&&op.repeat&&op.repeat!=='none'||op.action==='shopping_add'&&((op.quantity||1)>1||op.category&&op.category!=='Groceries');
+ if(needsRoutines&&!taskState.server?.capabilities?.includes('routines-v1')){
+  taskState.blockedRequest=op.request_id;taskState.routineBlocked=true;taskState.message='Saved on phone · pair or update the Mac to sync recurring reminders and shopping details.';saveTasks();renderTasks(true);return;
+ }
  if(taskState.pending[0].not_before>Date.now())return;
  if(sending&&Date.now()-sending.started<30000)return;
  sending={id:taskState.pending[0].request_id,started:Date.now()};
@@ -35,6 +39,7 @@ window.acceptTasks=data=>{
  if(!data?.instance||!Array.isArray(data.items))return;
  if(taskState.server&&data.instance!==taskState.server.instance){taskState.pending=[];sending=null;taskState.message='Mac task storage changed. Pending actions were cleared; please review the list.';}
  taskState.server=data;
+ if(taskState.routineBlocked&&data.capabilities?.includes('routines-v1')){taskState.blockedRequest=null;taskState.routineBlocked=false;taskState.message='';}
  // A successful server mutation followed by a lost reply must not apply twice.
  // Pending actions remain until their idempotent request receives an acknowledgement.
  try{saveTasks();}catch(e){taskState.message='Offline storage unavailable.';}
@@ -83,7 +88,12 @@ function renderTasks(force=false){
  $('tasks-status').textContent=taskState.message||(taskState.pending.length?`${taskState.pending.length} SAVED · SYNC PENDING`:taskState.server?'SYNCED WITH MAC':'LOCAL · PAIR TO SYNC');
  const list=$('shopping-list');list.replaceChildren();
  if(!shopping.length)list.append(make('p','settings-note',taskState.server?'Your shopping list is empty. Add an item here or ask Hermes in Telegram.':'Add an item here now. Pair with the Hermes Mac whenever you want to sync.'));
- shopping.sort((a,b)=>a.completed-b.completed||a.created_at.localeCompare(b.created_at)).forEach(item=>{const row=make('div','shopping-row'+(item.completed?' checked':'')),button=make('button','shopping-check',item.completed?'✓':'○');button.setAttribute('aria-label',`${item.completed?'Undo':'Check off'} ${item.title}`);button.onclick=()=>queueTask(item,'shopping_set',{completed:!item.completed});row.append(button,make('span','shopping-title',item.title));if(item.completed){const undo=make('button','shopping-undo','Undo');undo.onclick=()=>queueTask(item,'shopping_set',{completed:false});row.append(undo);}list.append(swipeItem(row,item));});
+ const completed=shopping.filter(i=>i.completed),active=shopping.filter(i=>!i.completed);
+ function shoppingRow(item){const row=make('div','shopping-row'+(item.completed?' checked':'')),button=make('button','shopping-check',item.completed?'✓':'○');button.setAttribute('aria-label',`${item.completed?'Undo':'Check off'} ${item.title}`);button.onclick=()=>queueTask(item,'shopping_set',{completed:!item.completed});row.append(button,make('span','shopping-title',item.title));
+  const quantity=make('div','quantity-controls');for(const [label,delta] of [['−',-1],['+',1]]){const b=make('button','',label);b.setAttribute('aria-label',`${delta>0?'Increase':'Decrease'} quantity of ${item.title}`);b.disabled=item.completed||(item.quantity||1)+delta<1||(item.quantity||1)+delta>999;b.onclick=()=>queueTask(item,'shopping_update',{quantity:(item.quantity||1)+delta});if(delta<0)quantity.append(b,make('span','',String(item.quantity||1)));else quantity.append(b);}row.append(quantity);if(item.completed){const undo=make('button','shopping-undo','Undo');undo.onclick=()=>queueTask(item,'shopping_set',{completed:false});row.append(undo);}return swipeItem(row,item);}
+ for(const category of ['Groceries','Produce','Dairy','Household','Other']){const group=active.filter(i=>(i.category||'Groceries')===category);if(!group.length)continue;list.append(make('div','shopping-category eyebrow',category));group.forEach(i=>list.append(shoppingRow(i)));}
+ if(completed.length){const group=make('details','completed-shopping');group.open=window.completedShoppingOpen||false;group.ontoggle=()=>{window.completedShoppingOpen=group.open;};group.append(make('summary','eyebrow',`COMPLETED · ${completed.length}`));completed.forEach(i=>group.append(shoppingRow(i)));list.append(group);}
+
  renderReminderList();
  if(window.liveMode)renderLiveTicker();else if(due.length)window.renderReminderTicker();else renderTicker();
 }
@@ -91,7 +101,7 @@ function renderReminderList(){
  const list=$('reminder-items');list.replaceChildren();
  const reminders=taskItems().filter(i=>i.kind==='reminder'&&!i.completed).sort((a,b)=>Date.parse(a.due_at)-Date.parse(b.due_at));
  if(!reminders.length)list.append(make('p','settings-note','No active reminders. Add one here or ask Hermes in Telegram.'));
- for(const item of reminders){const row=make('div','reminder-list-row'),copy=make('button','reminder-list-copy');copy.append(make('strong','',item.title),make('span','',`${taskTime(item.due_at)}${Date.parse(item.due_at)<=Date.now()?' · DUE':''}`));copy.onclick=()=>{$('reminder-list-dialog').close();openReminder(item);};const done=make('button','task-primary','Done');done.setAttribute('aria-label',`Mark ${item.title} done`);done.onclick=()=>queueTask(item,'reminder_done');row.append(copy,done);list.append(swipeItem(row,item));}
+ for(const item of reminders){const row=make('div','reminder-list-row'),copy=make('button','reminder-list-copy');copy.append(make('strong','',item.title),make('span','',`${taskTime(item.due_at)}${item.repeat&&item.repeat!=='none'?' · '+item.repeat.toUpperCase():''}${Date.parse(item.due_at)<=Date.now()?' · DUE':''}`));copy.onclick=()=>{$('reminder-list-dialog').close();openReminder(item);};const done=make('button','task-primary','Done');done.setAttribute('aria-label',`Mark ${item.title} done`);done.onclick=()=>queueTask(item,'reminder_done');row.append(copy,done);list.append(swipeItem(row,item));}
 }
 function showReminders(){$('settings').close();renderReminderList();$('reminder-list-dialog').showModal();}
 $('upcoming-reminders').onclick=showReminders;$('manage-reminders').onclick=showReminders;
@@ -108,7 +118,7 @@ function sydneyDate(value){
 }
 function showTaskEditor(kind){
  editingTaskKind=kind;$('settings').close();$('reminder-list-dialog').close();$('task-form').reset();$('task-form-error').textContent='';
- $('task-editor-label').textContent=kind==='reminder'?'ADD REMINDER':'ADD SHOPPING ITEM';$('task-time-field').hidden=kind!=='reminder';$('task-due').required=kind==='reminder';
+ $('task-editor-label').textContent=kind==='reminder'?'ADD REMINDER':'ADD SHOPPING ITEM';$('task-time-field').hidden=kind!=='reminder';$('task-due').required=kind==='reminder';$('task-repeat-field').hidden=kind!=='reminder';$('task-shopping-fields').hidden=kind!=='shopping';$('task-quantity').disabled=kind!=='shopping';
  $('task-title').placeholder=kind==='reminder'?'e.g. Put the bins out':'e.g. Milk — 2 litres';
  if(kind==='reminder')$('task-due').value=sydneyInput(new Date(Date.now()+3600000));
  $('task-editor').showModal();$('task-title').focus();
@@ -122,7 +132,7 @@ $('task-form').onsubmit=e=>{
  if(!title){$('task-form-error').textContent='Enter a title.';return;}
  if(editingTaskKind==='shopping'&&taskItems().some(i=>i.kind==='shopping'&&!i.completed&&i.title.toLocaleLowerCase()===title.toLocaleLowerCase())){$('task-form-error').textContent='That item is already on your shopping list.';return;}
  let due;try{if(editingTaskKind==='reminder')due=sydneyDate($('task-due').value);}catch(error){$('task-form-error').textContent=error.message;return;}
- const id=taskID(),fields={title,created_at:new Date().toISOString()};if(due)fields.due_at=due;
+ const id=taskID(),fields={title,created_at:new Date().toISOString()};if(due){fields.due_at=due;fields.repeat=$('task-repeat').value;}else{fields.quantity=Number($('task-quantity').value);fields.category=$('task-category').value;}
  if(queueTask({id},editingTaskKind==='reminder'?'reminder_add':'shopping_add',fields)){$('task-editor').close();if(editingTaskKind==='reminder')showReminders();else switchPage('shopping');}else $('task-form-error').textContent='Could not save on this phone. Please try again.';
 };
 renderTasks();setInterval(renderTasks,1000);setInterval(flushTasks,5000);

@@ -8,6 +8,7 @@ const {pathToFileURL}=require('node:url');
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.clock.install();
  await page.goto(pathToFileURL(path.resolve(__dirname,'../web/index.html')).href);
+ await page.locator('[data-page=home]').click();
  assert.equal(await page.locator('.watch-row').count(),8);
  await page.clock.runFor(20000);
  assert.ok(await page.locator('#watch-scroll').evaluate(e=>e.scrollTop)>0,'watchlist should scroll');

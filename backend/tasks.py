@@ -10,6 +10,9 @@ from pathlib import Path
 import sqlite3
 import uuid
 from zoneinfo import ZoneInfo
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from routines import next_due, REPEATS, CATEGORIES
 
 UTC = dt.timezone.utc
 SYDNEY = ZoneInfo('Australia/Sydney')
@@ -38,6 +41,7 @@ class Tasks:
                 CREATE TABLE IF NOT EXISTS items(id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL,
                   due_at TEXT, completed INTEGER NOT NULL DEFAULT 0, revision INTEGER NOT NULL DEFAULT 1,
                   created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS item_details(id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS deleted_items(id TEXT PRIMARY KEY, deleted_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS meta(id INTEGER PRIMARY KEY, instance TEXT NOT NULL);
@@ -52,10 +56,15 @@ class Tasks:
                 yield db
         finally:
             db.close()
+    def full_item(self, db, row):
+        result=dict(row)
+        details=db.execute('SELECT payload FROM item_details WHERE id=?',(row['id'],)).fetchone()
+        result.update(json.loads(details[0]) if details else dict(quantity=1,category='Groceries',repeat='none'))
+        return result
     def snapshot(self):
         with self.connect() as db:
-            return dict(instance=db.execute('SELECT instance FROM meta WHERE id=1').fetchone()[0],
-                items=[dict(r) for r in db.execute('SELECT * FROM items WHERE NOT EXISTS (SELECT 1 FROM deleted_items WHERE deleted_items.id=items.id) AND (completed=0 OR id IN (SELECT id FROM items WHERE completed=1 AND id NOT IN (SELECT id FROM deleted_items) ORDER BY updated_at DESC LIMIT 100)) ORDER BY created_at,id')])
+            return dict(capabilities=['routines-v1'],instance=db.execute('SELECT instance FROM meta WHERE id=1').fetchone()[0],
+                items=[self.full_item(db,r) for r in db.execute('SELECT * FROM items WHERE NOT EXISTS (SELECT 1 FROM deleted_items WHERE deleted_items.id=items.id) AND (completed=0 OR id IN (SELECT id FROM items WHERE completed=1 AND id NOT IN (SELECT id FROM deleted_items) ORDER BY updated_at DESC LIMIT 100)) ORDER BY created_at,id')])
     def apply(self, operation):
         if not isinstance(operation, dict):
             raise ValueError('Operation must be an object')
@@ -78,6 +87,13 @@ class Tasks:
                 title = ' '.join(title.split())
                 kind = 'reminder' if action == 'reminder_add' else 'shopping'
                 due = due_time(operation.get('due_at')) if kind == 'reminder' else None
+                quantity=operation.get('quantity',1)
+                category=operation.get('category','Groceries')
+                repeat=operation.get('repeat','none')
+                if type(quantity) is not int or not 1<=quantity<=999 or category not in CATEGORIES or repeat not in REPEATS:
+                    raise ValueError('Invalid quantity, category or repeat')
+                if kind=='shopping' and repeat!='none':
+                    raise ValueError('Shopping items cannot repeat')
                 # Deduplicate currently unchecked shopping items, including case/space differences.
                 found = next((r for r in db.execute("SELECT * FROM items WHERE kind='shopping' AND completed=0")
                               if r['title'].casefold() == title.casefold()), None) if kind == 'shopping' else None
@@ -92,8 +108,9 @@ class Tasks:
                     if db.execute('SELECT 1 FROM items WHERE id=?', (item_id,)).fetchone():
                         raise ValueError('Client item id already exists')
                     db.execute('INSERT INTO items VALUES (?,?,?,?,0,1,?,?)', (item_id, kind, title, due, now(), now()))
-                result = dict(request_id=request_id, status='ok', item=dict(db.execute('SELECT * FROM items WHERE id=?', (item_id,)).fetchone()))
-            elif action in ('reminder_done', 'reminder_snooze', 'shopping_set', 'item_delete'):
+                    db.execute('INSERT INTO item_details VALUES (?,?)',(item_id,json.dumps(dict(quantity=quantity,category=category,repeat=repeat,repeat_anchor=due))))
+                result = dict(request_id=request_id, status='ok', item=self.full_item(db,db.execute('SELECT * FROM items WHERE id=?', (item_id,)).fetchone()))
+            elif action in ('reminder_done', 'reminder_snooze', 'shopping_set', 'shopping_update', 'item_delete'):
                 row = db.execute('SELECT * FROM items WHERE id=?', (operation.get('id'),)).fetchone()
                 expected = operation.get('expected_revision')
                 if not row or db.execute('SELECT 1 FROM deleted_items WHERE id=?', (row['id'],)).fetchone():
@@ -101,10 +118,17 @@ class Tasks:
                 elif type(expected) is not int or expected != row['revision']:
                     result = dict(request_id=request_id, status='conflict', item=dict(row))
                 else:
+                    details=self.full_item(db,row)
                     due, complete = row['due_at'], row['completed']
                     if action == 'item_delete':
                         db.execute('INSERT INTO deleted_items VALUES (?,?)', (row['id'], now()))
                         complete = 1
+                    elif action == 'shopping_update':
+                        quantity=operation.get('quantity',details['quantity'])
+                        category=operation.get('category',details['category'])
+                        if row['kind']!='shopping' or type(quantity) is not int or not 1<=quantity<=999 or category not in CATEGORIES:
+                            raise ValueError('Invalid shopping update')
+                        db.execute('INSERT OR REPLACE INTO item_details VALUES (?,?)',(row['id'],json.dumps(dict(quantity=quantity,category=category,repeat='none'))))
                     elif action == 'shopping_set':
                         if row['kind'] != 'shopping' or type(operation.get('completed')) is not bool:
                             raise ValueError('shopping_set needs a shopping item and boolean completed')
@@ -116,13 +140,17 @@ class Tasks:
                         if row['kind'] != 'reminder':
                             raise ValueError('Not a reminder')
                         if action == 'reminder_done':
-                            complete = 1
+                            if details.get('repeat','none')!='none':
+                                due=next_due(details.get('repeat_anchor') or due,max(now(),due),details['repeat'])
+                                complete=0
+                            else:
+                                complete = 1
                         else:
                             if complete:
                                 raise ValueError('Completed reminders cannot be snoozed')
                             due = due_time(operation.get('due_at'))
                     db.execute('UPDATE items SET due_at=?,completed=?,revision=revision+1,updated_at=? WHERE id=?', (due, complete, now(), row['id']))
-                    result = dict(request_id=request_id, status='ok', item=dict(db.execute('SELECT * FROM items WHERE id=?', (row['id'],)).fetchone()))
+                    result = dict(request_id=request_id, status='ok', item=self.full_item(db,db.execute('SELECT * FROM items WHERE id=?', (row['id'],)).fetchone()))
             else:
                 raise ValueError('Unsupported action')
             db.execute('INSERT INTO operations VALUES (?,?,?)', (request_id, request, json.dumps(result)))

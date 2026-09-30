@@ -25,7 +25,15 @@
   <button id="theme-toggle" class="theme-toggle" aria-label="Cycle automatic, light and dark theme"><svg class="icon"><use href="#sun"/></svg><span id="theme-label">AUTO</span></button>
  </header>
  <main id="pages">
-  <section id="page-home" class="page home-page active" aria-label="Home">
+  <section id="page-today" class="page active" aria-label="Today">
+   <div class="section-title"><h1>TODAY <span class="heading-note">/ SYDNEY</span></h1><span id="today-status" class="sample-tag"></span></div>
+   <div class="today-grid">
+    <div class="today-card today-weather"><span class="eyebrow">OUTSIDE</span><strong id="today-temperature"></strong><span id="today-weather"></span><small id="today-weather-status"></small><div id="today-family"></div></div>
+    <div class="today-middle"><button id="today-reminder" class="today-card"><span class="eyebrow">NEXT REMINDER</span><strong id="today-reminder-title"></strong><small id="today-reminder-time"></small></button><button id="today-shopping" class="today-card"><span class="eyebrow">SHOPPING</span><strong id="today-shopping-count"></strong><small id="today-shopping-preview"></small></button></div>
+    <button id="today-briefing" class="today-card"><span class="eyebrow">HERMES BRIEFING</span><strong id="today-briefing-title"></strong><p id="today-briefing-body"></p><small id="today-briefing-time"></small></button>
+   </div>
+  </section>
+  <section id="page-home" class="page home-page" aria-label="Home">
    <div id="due-reminder" hidden></div>
    <aside class="weather-panel">
     <div class="eyebrow">SYDNEY <span id="weather-status" class="sample-tag">DEMO WEATHER</span></div>
@@ -56,7 +64,8 @@
   </section>
  </main>
  <nav class="bottom-nav" aria-label="Dashboard pages">
-  <button data-page="home" class="nav-item selected"><svg class="icon"><use href="#home"/></svg>Home</button>
+  <button data-page="today" class="nav-item selected"><svg class="icon"><use href="#home"/></svg>Today</button>
+  <button data-page="home" class="nav-item">Watchlist</button>
   <button data-page="ideas" class="nav-item"><svg class="icon"><use href="#bulb"/></svg>Ideas</button>
   <button data-page="briefings" class="nav-item"><svg class="icon"><use href="#news"/></svg>Briefings<span id="unread" class="badge">2</span></button>
   <button data-page="shopping" class="nav-item"><svg class="icon"><use href="#basket"/></svg>Shopping<span id="shopping-badge" class="badge"></span></button>
@@ -69,6 +78,8 @@
  <div class="dialog-top"><span id="task-editor-label" class="eyebrow">ADD ITEM</span><button id="task-editor-close" type="button" aria-label="Close task form">×</button></div>
  <label class="task-field">What do you need?<input id="task-title" type="text" maxlength="300" required autocomplete="off" placeholder="e.g. Milk — 2 litres"></label>
  <label id="task-time-field" class="task-field" hidden>When? · Sydney time<input id="task-due" type="datetime-local" step="60"></label>
+ <label id="task-repeat-field" class="task-field" hidden>Repeat<select id="task-repeat"><option value="none">Once</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+ <div id="task-shopping-fields" class="task-options"><label class="task-field">Quantity<input id="task-quantity" type="number" min="1" max="999" value="1" required></label><label class="task-field">Category<select id="task-category"><option>Groceries</option><option>Produce</option><option>Dairy</option><option>Household</option><option>Other</option></select></label></div>
  <p id="task-form-error" class="settings-note" role="alert"></p>
  <p class="settings-note">Saved on this phone first, then synced to Hermes when connected.</p>
  <button type="submit" class="task-primary task-save">Save</button>
@@ -79,11 +90,12 @@
   <label>Theme<select id="theme-select"><option value="auto">Auto · Sydney sunrise / sunset</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
   <label class="switch-row">Scroll through watchlist<input id="scroll-setting" type="checkbox"></label>
   <label class="switch-row">Rotate pages automatically<input id="rotate-setting" type="checkbox"></label>
+  <label class="switch-row">Dim 10 pm–7 am · Sydney<input id="quiet-setting" type="checkbox"></label>
   <label class="switch-row">Animate news ticker<input id="ticker-setting" type="checkbox"></label>
  </div>
  <p class="settings-note">Touch pauses scrolling for 15 seconds. Page rotation waits for the watchlist to finish. Clocks use your phone's time and each city's time zone.</p>
  <div class="demo-controls"><button id="demo-reminder">Show demo reminder</button><span id="sun-times"></span></div>
- <div class="demo-controls"><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button><button id="upcoming-reminders">Reminders</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.6 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery.</p>
+ <div class="demo-controls"><button id="scan-pairing">Scan pairing QR</button><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button><button id="upcoming-reminders">Reminders</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.7 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery. Tap to brighten for 2 minutes during quiet hours.</p>
 </dialog>
-<script src="core.js"></script><script src="app.js"></script><script src="trade-details.js"></script><script src="tasks.js"></script><script src="live.js"></script>
+<script src="core.js"></script><script src="app.js"></script><script src="trade-details.js"></script><script src="routines.js"></script><script src="tasks.js"></script><script src="live.js"></script><script src="lifestyle.js"></script>
 </body></html>

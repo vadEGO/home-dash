@@ -250,7 +250,7 @@ def serve(root):
                 if not 0 < size <= 16384:
                     raise ValueError('Invalid request size')
                 operation = json.loads(self.rfile.read(size))
-                if operation.get('action') not in ('reminder_add','shopping_add','reminder_done','reminder_snooze','shopping_set','item_delete'):
+                if operation.get('action') not in ('reminder_add','shopping_add','reminder_done','reminder_snooze','shopping_set','shopping_update','item_delete'):
                     raise ValueError('Phone action unsupported')
                 result = tasks.apply(operation)
                 self.respond(200, dict(version=1, result=result, tasks=tasks.snapshot()))

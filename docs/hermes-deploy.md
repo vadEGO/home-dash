@@ -1,4 +1,4 @@
-# Hermes deployment handoff — preview 0.6
+# Hermes deployment handoff — preview 0.7
 
 Deploy on the **dedicated Hermes Mac**, after user login. The development Mac does not host production. This adds a separate Python service; it does not modify Hermes, MoneyTrail, their databases, or their launch agents. No Docker, app store, or Python packages are required. A private venv is created from the Python interpreter you use.
 
@@ -54,7 +54,7 @@ If local curl requires Subject Alternative Names, use a verified Python SSL cont
 
 ## 3. Pair the Seeker
 
-The phone needs APK **0.6.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
+The phone needs APK **0.7.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
 
 ```sh
 python3 scripts/mac-service.py pairing
@@ -130,3 +130,21 @@ Pending user clarification: SPCX instrument, gold spot versus company/fund, and 
 Reference identities: [Meteora MET](https://ir.meteora.ag/), [Chainlink LINK](https://chain.link/article/what-is-link-token), [Pyth PYTH](https://docs.pyth.network/pyth-token), [Jupiter JUP](https://discuss.jup.ag/t/jup-the-genesis-post/478), [Jito JTO](https://www.jito.network/docs/governance/the-jito-governance-token-jto/), [Kamino KMNO](https://kamino.com/), [Sonic Labs S](https://docs.soniclabs.com/sonic/s-token).
 
 BTC-USD displays the user's requested pair label while querying MoneyTrail's BTC group. Confirm that group's quote is USD. A missing research row stays visible without a score; this release does not add a second quote provider for uncovered assets. Configuring this list does not create MoneyTrail research or scores.
+
+
+## Preview 0.7: Today, routines, quiet hours and QR pairing
+
+Deploy the matching service revision before using recurring reminders or shopping quantities/categories. Existing tokens, certificates, items and watchlist configuration are preserved. The service adds an `item_details` table and advertises `routines-v1`; the phone holds enhanced operations until it sees that capability. Follow [hermes-tasks.md](hermes-tasks.md) for operations and rollback limits.
+
+To avoid entering credentials on the phone, run on the dedicated Mac:
+
+```sh
+python3 scripts/mac-service.py pairing-qr https://YOUR-MAC-LAN-ADDRESS:8765
+open "$HOME/Library/Application Support/HomeDash/pairing.html"
+```
+
+Use the actual Mac address reachable from the Seeker over home Wi-Fi. On the phone, Settings → Scan pairing QR, allow camera access, point at the Mac screen and confirm the address. Credentials are encoded locally; no external QR service is used. The HTML is owner-readable only (0600), contains the access token, and should be closed/deleted after pairing. Never commit or post the QR in Telegram. Manual pairing remains available. Scanning identical credentials preserves local queued tasks; changing an established pairing still clears its local task cache.
+
+Quiet hours default to 22:00–07:00 Australia/Sydney, independent of the phone timezone. The app sets its own window brightness to 2% overnight, restores system brightness at 07:00, and temporarily brightens for two minutes on touch. Settings can disable this. Charging keeps the open app awake; battery operation follows the normal screen timeout. This cannot wake or unlock a sleeping phone or run alarms when the app is closed.
+
+Deployment checks: verify the actual camera scan and Mac connection; create one recurring reminder and one quantity/category shopping item; confirm phone edits return to the Mac. Test dim/restore while the app stays open. The automated QR test decodes the generated SVG with the bundled Android library; it does not validate the physical camera or home Wi-Fi.

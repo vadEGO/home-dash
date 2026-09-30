@@ -14,6 +14,7 @@ const {pathToFileURL}=require('node:url');
  assert.equal(await page.locator('.shopping-title').textContent(),'Milk');
  await page.getByRole('button',{name:'Check off Milk',exact:true}).click();
  await page.reload();await page.locator('[data-page=shopping]').click();assert.equal(await page.locator('.shopping-row.checked').count(),1);
+ await page.locator('.completed-shopping summary').click();
  await page.getByRole('button',{name:'Undo',exact:true}).click();
  await page.locator('#add-shopping').click();await page.locator('#task-title').fill('  MILK  ');await page.locator('#task-form').getByRole('button',{name:'Save',exact:true}).click();
  assert.match(await page.locator('#task-form-error').textContent(),/already/);await page.locator('#task-editor-close').click();

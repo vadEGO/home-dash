@@ -48,6 +48,10 @@ public class MainActivity extends Activity {
         web.loadUrl("file:///android_asset/index.html");
         fullscreen();
     }
+    @Override protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request,result,data);
+        if(request==42 && result==RESULT_OK && data!=null)connection.acceptPairing(data.getStringExtra("pairing"));
+    }
     private void fullscreen() {
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN |

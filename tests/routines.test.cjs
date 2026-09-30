@@ -1,0 +1,3 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),R=require('../web/routines.js'),fixtures=require('./recurrence-fixtures.json');
+test('offline Sydney recurrence preserves local time, month anchor and handles DST gaps/overlap',()=>{for(const [anchor,after,repeat,expected] of fixtures)assert.equal(R.nextDue(anchor,after,repeat),new Date(expected).toISOString(),JSON.stringify([anchor,after,repeat]));});
+test('quiet hours Sydney boundaries in winter and summer',()=>{for(const [time,expected] of [['2026-09-30T11:59:00Z',false],['2026-09-30T12:00:00Z',true],['2026-09-30T20:59:00Z',true],['2026-09-30T21:00:00Z',false],['2026-12-01T11:00:00Z',true],['2026-12-01T20:00:00Z',false]])assert.equal(R.quiet(time),expected);});

@@ -113,7 +113,7 @@ if __name__ == '__main__':
         raise SystemExit('Use Python 3.11.8 or newer (the Hermes Python 3.11.14 interpreter is suitable).')
     os.umask(0o077)
     parser=argparse.ArgumentParser()
-    parser.add_argument('command',choices=['install','restart','status','pairing','publish','rollback','watchlist'])
+    parser.add_argument('command',choices=['install','restart','status','pairing','publish','rollback','watchlist','pairing-qr'])
     parser.add_argument('value',nargs='?')
     args=parser.parse_args()
     if args.command=='install':
@@ -130,6 +130,11 @@ if __name__ == '__main__':
     elif args.command=='publish':
         if not args.value: parser.error('publish requires a JSON file')
         publish(args.value)
+    elif args.command=='pairing-qr':
+        if not args.value: parser.error('pairing-qr requires https://Mac-address:8765')
+        sys.path.insert(0,str(REPO/'backend'))
+        from pairing import generate
+        print('Saved private pairing QR: '+str(generate(ROOT,args.value)))
     elif args.command=='pairing':
         der=ssl.PEM_cert_to_DER_cert((ROOT/'server.crt').read_text())
         print('Certificate SHA-256: '+hashlib.sha256(der).hexdigest())

@@ -9,6 +9,7 @@ const path=require('node:path');
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>window.DashboardNative={refresh(){},isConfigured(){return true;},configure(){}});
  await page.goto(pathToFileURL(path.resolve(__dirname,'../web/index.html')).href);
+ await page.locator('[data-page=home]').click();
  assert.equal(await page.locator('.watch-row').count(),0,'paired mode must not show demo assets');
  assert.equal(await page.locator('#weather-temperature').textContent(),'—');
  const now=new Date().toISOString();

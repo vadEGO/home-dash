@@ -140,17 +140,34 @@ public final class DashboardConnection {
                 }).setPositiveButton("Save",null).create();
             dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
                 try {
-                    String base=url.getText().toString().trim().replaceAll("/+$","");
-                    URL parsed=new URL(base);
-                    String hash=pin.getText().toString().replace(":","").replace(" ","").toLowerCase(java.util.Locale.ROOT);
-                    String value=token.getText().toString().trim();
-                    if(!parsed.getProtocol().equals("https")||parsed.getHost().isEmpty()||parsed.getUserInfo()!=null||!parsed.getPath().isEmpty()||parsed.getQuery()!=null||parsed.getRef()!=null||!hash.matches("[0-9a-f]{64}")||!value.matches("[A-Za-z0-9_-]{32,256}"))throw new Exception();
-                    String encrypted=encrypt(value);
-                    generation++;prefs.edit().putString("url",base).putString("pin",hash).putString("token",encrypted).apply();
-                    result(null,"pairing_changed",generation);dialog.dismiss();refresh();
+                    savePairing(url.getText().toString(),pin.getText().toString(),token.getText().toString());
+                    dialog.dismiss();refresh();
                 } catch(Exception e){Toast.makeText(activity,"Check HTTPS URL, 64-character fingerprint and device token.",Toast.LENGTH_LONG).show();}
             }));dialog.show();
         });
+    }
+    @JavascriptInterface public void setQuietMode(boolean quiet) {
+        activity.runOnUiThread(()->{android.view.WindowManager.LayoutParams p=activity.getWindow().getAttributes();p.screenBrightness=quiet?0.02f:-1f;activity.getWindow().setAttributes(p);});
+    }
+    @JavascriptInterface public void scanPairing() {
+        activity.runOnUiThread(()->activity.startActivityForResult(new android.content.Intent(activity,QrScannerActivity.class),42));
+    }
+    private void savePairing(String url,String pin,String token) throws Exception {
+        String base=url.trim().replaceAll("/+$","");URL parsed=new URL(base);
+        String hash=pin.replace(":","").replace(" ","").toLowerCase(java.util.Locale.ROOT),value=token.trim();
+        if(!parsed.getProtocol().equals("https")||parsed.getHost().isEmpty()||parsed.getUserInfo()!=null||!parsed.getPath().isEmpty()||parsed.getQuery()!=null||parsed.getRef()!=null||!hash.matches("[0-9a-f]{64}")||!value.matches("[A-Za-z0-9_-]{32,256}"))throw new Exception();
+        try{if(base.equals(prefs.getString("url","")) && hash.equals(prefs.getString("pin","")) && value.equals(decrypt(prefs.getString("token",""))))return;}catch(Exception ignored){}
+        String encrypted=encrypt(value);generation++;prefs.edit().putString("url",base).putString("pin",hash).putString("token",encrypted).apply();result(null,"pairing_changed",generation);
+    }
+    void acceptPairing(String text) {
+        try {
+            if(text==null||text.length()>2048)throw new Exception();
+            JSONObject p=new JSONObject(text);
+            if(!"home-dash-pairing".equals(p.getString("type"))||p.getInt("version")!=1)throw new Exception();
+            String url=p.getString("url"),pin=p.getString("pin"),token=p.getString("token");
+            new AlertDialog.Builder(activity).setTitle("Pair with Hermes Mac?").setMessage(url)
+                .setNegativeButton("Cancel",null).setPositiveButton("Pair",(d,w)->{try{savePairing(url,pin,token);refresh();}catch(Exception e){Toast.makeText(activity,"Invalid pairing details. Generate a new QR on the Mac.",Toast.LENGTH_LONG).show();}}).show();
+        }catch(Exception e){Toast.makeText(activity,"Not a valid Home Dash pairing QR.",Toast.LENGTH_LONG).show();}
     }
     void close(){closed=true;worker.shutdownNow();}
 }

@@ -1,7 +1,7 @@
 /* Offline prototype. Every market/weather/research value below is illustrative. */
 'use strict';
 const C=window.DashboardCore,$=id=>document.getElementById(id);
-const defaults={theme:'auto',scroll:true,rotate:false,ticker:true};
+const defaults={theme:'auto',scroll:true,rotate:false,ticker:true,quiet:true};
 let settings={...defaults},readIds=[];
 try{settings={...defaults,...JSON.parse(localStorage.getItem('display')||'{}')};readIds=JSON.parse(localStorage.getItem('read')||'[]');}catch(e){}
 const save=()=>{try{localStorage.setItem('display',JSON.stringify(settings));localStorage.setItem('read',JSON.stringify(readIds));}catch(e){}};
@@ -19,7 +19,7 @@ let briefings=[
  {id:'morning',title:'Your morning, in three points',sub:'A preview of the summaries Hermes will send here.',body:['This is a sample briefing, not a current news report.','Your chosen watchlist, Sydney weather and family clocks share one glanceable home screen.','Hermes will publish short summaries with original source links and publication timestamps.','No live connection is configured in this prototype.']},
  {id:'research',title:'What changed on your watchlist',sub:'Score changes, new evidence and ideas worth revisiting.',body:['This is illustrative content for the Briefings page.','A future MoneyTrail adapter will preserve the original score, direction and independent data timestamps.','Refreshing this screen will never make old research appear current.']}
 ];
-let page='home',lastTouch=0,pageSince=performance.now(),scrollComplete=false,scrollHoldUntil=performance.now()+3000,atBottom=false;
+let page='today',lastTouch=0,pageSince=performance.now(),scrollComplete=false,scrollHoldUntil=performance.now()+3000,atBottom=false;
 let reminder=null;
 try{reminder=JSON.parse(localStorage.getItem('demo-reminder')||'null');}catch(e){}
 function persistReminder(){try{localStorage.setItem('demo-reminder',JSON.stringify(reminder));}catch(e){}}
@@ -60,7 +60,7 @@ function renderTicker(){
 }
 function switchPage(next){page=next;document.querySelectorAll('.page').forEach(n=>n.classList.toggle('active',n.id===`page-${next}`));document.querySelectorAll('[data-page]').forEach(n=>{n.classList.toggle('selected',n.dataset.page===next);n.setAttribute('aria-current',n.dataset.page===next?'page':'false');});pageSince=performance.now();if(next==='home'){$('watch-scroll').scrollTop=0;scrollComplete=false;atBottom=false;scrollHoldUntil=performance.now()+3000;}}
 document.querySelectorAll('[data-page]').forEach(n=>n.onclick=()=>switchPage(n.dataset.page));
-const sequence=['home','ideas','briefings','shopping'];let start=null;
+const sequence=['today','home','ideas','briefings','shopping'];let start=null;
 $('pages').addEventListener('touchstart',e=>{if(e.target.closest('.swipe-item')){start=null;return;}start={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
 $('pages').addEventListener('touchend',e=>{if(!start)return;const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.7)switchPage(sequence[(sequence.indexOf(page)+(dx<0?1:sequence.length-1))%sequence.length]);start=null;},{passive:true});
 document.addEventListener('pointerdown',()=>{lastTouch=performance.now();});

@@ -5,14 +5,18 @@ sdk_dir="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 build_tools="$sdk_dir/build-tools/36.0.0"
 android_jar="$sdk_dir/platforms/android-37.0/android.jar"
 java_dir="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"
+zxing_jar="$project_dir/android/libs/zxing-core-3.5.3.jar"
+expected_hash="8d8064c1636fdaef7189dd9055c7d59950a8940a12f2293956446ec3c109fd82"
+actual_hash="$(shasum -a 256 "$zxing_jar")"
+[[ "${actual_hash%% *}" == "$expected_hash" ]] || { echo 'ZXing checksum mismatch' >&2; exit 1; }
 build_dir="$project_dir/build"
 sign_dir="$project_dir/.signing"
 mkdir -p "$build_dir/classes" "$build_dir/dex" "$sign_dir" "$project_dir/dist"
 "$build_tools/aapt2" compile --dir "$project_dir/android/res" -o "$build_dir/resources.zip"
 "$build_tools/aapt2" link -I "$android_jar" --manifest "$project_dir/android/AndroidManifest.xml" -A "$project_dir/web" -o "$build_dir/base.apk" "$build_dir/resources.zip"
-"$java_dir/bin/javac" -source 8 -target 8 -Xlint:-options -classpath "$android_jar" -d "$build_dir/classes" "$project_dir"/android/src/local/fridge/dashboard/*.java
+"$java_dir/bin/javac" -source 8 -target 8 -Xlint:-options -classpath "$android_jar:$zxing_jar" -d "$build_dir/classes" "$project_dir"/android/src/local/fridge/dashboard/*.java
 "$java_dir/bin/jar" cf "$build_dir/classes.jar" -C "$build_dir/classes" .
-JAVA_HOME="$java_dir" "$build_tools/d8" --lib "$android_jar" --min-api 26 --output "$build_dir/dex" "$build_dir/classes.jar"
+JAVA_HOME="$java_dir" "$build_tools/d8" --lib "$android_jar" --min-api 26 --output "$build_dir/dex" "$build_dir/classes.jar" "$zxing_jar"
 cp "$build_dir/base.apk" "$build_dir/unsigned.apk"
 (cd "$build_dir/dex" && zip -q -j "$build_dir/unsigned.apk" classes.dex)
 "$build_tools/zipalign" -f -p 4 "$build_dir/unsigned.apk" "$build_dir/aligned.apk"
