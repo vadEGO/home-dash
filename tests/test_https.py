@@ -48,13 +48,18 @@ class HTTPSTests(unittest.TestCase):
                 rejected=urllib.request.Request(url+'/v1/actions',data=action,headers={'Content-Type':'application/json'})
                 with self.assertRaises(urllib.error.HTTPError) as error:urllib.request.urlopen(rejected,context=context)
                 self.assertEqual(error.exception.code,401)
+                creation=json.dumps(dict(request_id='phone-create',id='phone-123456789012',action='reminder_add',title='Phone reminder',due_at='2026-10-01T20:00:00')).encode()
+                create_request=urllib.request.Request(url+'/v1/actions',data=creation,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
+                with urllib.request.urlopen(create_request,context=context) as response:
+                    self.assertEqual(json.load(response)['result']['item']['id'],'phone-123456789012')
                 post=urllib.request.Request(url+'/v1/actions',data=action,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
                 for _ in range(2):
                     with urllib.request.urlopen(post,context=context) as response:
                         result=json.load(response)
                         self.assertEqual(result['result']['status'],'ok')
-                        self.assertEqual(result['tasks']['items'][0]['revision'],2)
-                        self.assertEqual(result['tasks']['items'][0]['completed'],1)
+                        saved=next(i for i in result['tasks']['items'] if i['id']==created['item']['id'])
+                        self.assertEqual(saved['revision'],2)
+                        self.assertEqual(saved['completed'],1)
             finally:
                 process.terminate();process.wait(timeout=5);process.stderr.close()
 

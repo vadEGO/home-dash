@@ -5,6 +5,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 from pathlib import Path
 import sqlite3
 import uuid
@@ -84,7 +85,11 @@ class Tasks:
                 else:
                     if db.execute('SELECT count(*) FROM items WHERE completed=0').fetchone()[0] >= 500:
                         raise ValueError('Active item limit reached')
-                    item_id = str(uuid.uuid4())
+                    item_id = operation.get('id') or str(uuid.uuid4())
+                    if operation.get('id') is not None and (not isinstance(item_id, str) or not re.fullmatch(r'phone-[a-zA-Z0-9-]{10,180}', item_id)):
+                        raise ValueError('Invalid client item id')
+                    if db.execute('SELECT 1 FROM items WHERE id=?', (item_id,)).fetchone():
+                        raise ValueError('Client item id already exists')
                     db.execute('INSERT INTO items VALUES (?,?,?,?,0,1,?,?)', (item_id, kind, title, due, now(), now()))
                 result = dict(request_id=request_id, status='ok', item=dict(db.execute('SELECT * FROM items WHERE id=?', (item_id,)).fetchone()))
             elif action in ('reminder_done', 'reminder_snooze', 'shopping_set'):

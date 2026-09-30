@@ -51,6 +51,7 @@
   </section>
   <section id="page-shopping" class="page" aria-label="Shopping list">
    <div class="section-title"><h1>SHOPPING <span id="shopping-count" class="heading-note"></span></h1><span id="tasks-status" class="sample-tag">PAIR TO SYNC</span></div>
+   <div class="task-toolbar"><button id="add-shopping" class="task-primary">+ Add item</button><button id="manage-reminders" class="task-secondary">Reminders</button><button id="add-reminder" class="task-secondary">+ Add reminder</button><button id="tasks-retry" class="task-secondary" hidden>Retry sync</button></div>
    <div id="shopping-list"></div>
   </section>
  </main>
@@ -63,6 +64,15 @@
  </nav>
 </div>
 <dialog id="detail"><div class="dialog-top"><span id="detail-label" class="eyebrow"></span><button id="detail-close" aria-label="Close">×</button></div><h2 id="detail-title"></h2><div id="detail-body"></div><div id="detail-actions"></div></dialog>
+<dialog id="task-editor"><form id="task-form">
+ <div class="dialog-top"><span id="task-editor-label" class="eyebrow">ADD ITEM</span><button id="task-editor-close" type="button" aria-label="Close task form">×</button></div>
+ <label class="task-field">What do you need?<input id="task-title" type="text" maxlength="300" required autocomplete="off" placeholder="e.g. Milk — 2 litres"></label>
+ <label id="task-time-field" class="task-field" hidden>When? · Sydney time<input id="task-due" type="datetime-local" step="60"></label>
+ <p id="task-form-error" class="settings-note" role="alert"></p>
+ <p class="settings-note">Saved on this phone first, then synced to Hermes when connected.</p>
+ <button type="submit" class="task-primary task-save">Save</button>
+ </form></dialog>
+<dialog id="reminder-list-dialog"><div class="dialog-top"><span class="eyebrow">REMINDERS · SYDNEY TIME</span><button id="reminder-list-close" aria-label="Close reminders">×</button></div><div class="task-toolbar"><button id="reminder-list-add" class="task-primary">+ Add reminder</button></div><div id="reminder-items"></div></dialog>
 <dialog id="settings"><div class="dialog-top"><span class="eyebrow">DISPLAY SETTINGS</span><button id="settings-close" aria-label="Close settings">×</button></div>
  <div class="settings-grid">
   <label>Theme<select id="theme-select"><option value="auto">Auto · Sydney sunrise / sunset</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
@@ -72,7 +82,7 @@
  </div>
  <p class="settings-note">Touch pauses scrolling for 15 seconds. Page rotation waits for the watchlist to finish. Clocks use your phone's time and each city's time zone.</p>
  <div class="demo-controls"><button id="demo-reminder">Show demo reminder</button><span id="sun-times"></span></div>
- <div class="demo-controls"><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button><button id="upcoming-reminders">Reminders</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.4 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery.</p>
+ <div class="demo-controls"><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button><button id="upcoming-reminders">Reminders</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.5 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery.</p>
 </dialog>
 <script src="core.js"></script><script src="app.js"></script><script src="trade-details.js"></script><script src="tasks.js"></script><script src="live.js"></script>
 </body></html>

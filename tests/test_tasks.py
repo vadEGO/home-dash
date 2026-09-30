@@ -12,6 +12,14 @@ class TaskTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.tasks=t.Tasks(self.temp.name)
     def tearDown(self):self.temp.cleanup()
+    def test_phone_add_then_complete_uses_stable_item_id(self):
+        op=dict(request_id='request-add',id='phone-12345678901',action='shopping_add',title='Bread')
+        result=self.tasks.apply(op)
+        self.assertEqual(result['item']['id'],op['id'])
+        done=self.tasks.apply(dict(request_id='request-done',action='shopping_set',id=op['id'],expected_revision=1,completed=True))
+        self.assertEqual(done['item']['completed'],1)
+        self.assertEqual(self.tasks.apply(op)['item']['id'],op['id'])
+        with self.assertRaises(ValueError):self.tasks.apply(dict(op,request_id='different',title='Eggs'))
     def test_sydney_time_and_dst(self):
         self.assertEqual(t.due_time('2026-09-30T20:00:00'),'2026-09-30T10:00:00+00:00')
         self.assertEqual(t.due_time('2026-12-01T20:00:00'),'2026-12-01T09:00:00+00:00')

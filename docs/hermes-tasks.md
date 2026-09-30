@@ -1,6 +1,6 @@
-# Reminders and shopping — Hermes handoff (0.4)
+# Reminders and shopping — Hermes handoff (0.5)
 
-Deploy the matching Mac service and APK 0.4.0-preview. The phone update alone cannot enable this feature. The existing HTTPS address, certificate and device token are retained. No additional service, cloud account or Telegram bot is required.
+Deploy the matching Mac service and APK 0.5.0-preview. The phone update alone cannot enable this feature. The existing HTTPS address, certificate and device token are retained. No additional service, cloud account or Telegram bot is required.
 
 ## Enable the workflow on the dedicated Mac
 
@@ -74,15 +74,15 @@ A successful result includes the saved item, ID and revision. `conflict` or `mis
 
 ## Phone behaviour and limits
 
-The authenticated dashboard snapshot includes tasks; `POST /v1/actions` accepts only Done, Snooze and shopping check/undo from the phone. The existing token and certificate pin protect these requests. Only the local Hermes CLI creates items.
+The authenticated dashboard snapshot includes tasks; `POST /v1/actions` accepts reminder/shopping creation, Done, Snooze and shopping check/undo from the phone. The existing token and certificate pin protect these requests. The local Hermes CLI and phone forms both create items in the same database.
 
 - A due reminder takes priority over the briefing ticker, displays a Home card, and pauses automatic page rotation. On other pages it stays in the header; tap to return Home. Multiple due reminders are ordered by due time; completing/snoozing the oldest reveals the next.
 - Done and Snooze 10 min update locally immediately. Snooze is measured from the tap time. Both remain saved if offline, with retries after reconnect.
-- Shopping has a separate page, a remaining-item badge, check-off and Undo. Settings → Reminders lists active upcoming and overdue reminders.
+- Shopping has a separate page, a remaining-item badge, check-off and Undo. Its toolbar offers Add item, Add reminder and Reminders. The reminder form uses Sydney time independent of the phone timezone; skipped/repeated DST times are rejected. Settings → Reminders also opens the active list, where reminders can be completed before their due time.
 - The phone checks cached due times every second while JavaScript is running. New tasks arrive through the existing minute polling; an already-received reminder does not need another network poll to become due.
 - This is **foreground dashboard behaviour**. No Android alarms, sound, system notifications, screen wake or closed-app delivery are implemented. After sleep/reopening, overdue reminders appear when the app runs again.
 - If the Mac and phone modify the same item, the server checks revisions. Conflicting queued edits for that item are dropped and the UI asks the user to review the current state; unrelated queued edits remain.
-- Disconnecting/re-pairing clears the local task cache and pending actions. A different server task database also clears old pending actions to avoid applying them to the wrong data.
+- First pairing preserves locally created tasks that have never been linked to a server. Disconnecting or changing an established pairing clears the local task cache and pending actions. A different server task database also clears old pending actions to avoid applying them to the wrong data.
 - Up to 500 active items are allowed. The snapshot includes active items plus the 100 most recently completed items for Undo/history. Older records and operation receipts remain in SQLite. No retention job is installed.
 
 ## Verification
@@ -90,3 +90,9 @@ The authenticated dashboard snapshot includes tasks; `POST /v1/actions` accepts 
 Run the Python suite and `tests/tasks-ui-check.cjs` (with Playwright). They exercise Sydney DST boundaries, persistence, concurrent duplicate adds, mutation retries, check/undo, stale revisions, authenticated HTTPS writes, offline reminder timing and reconnect behaviour.
 
 On the dedicated Mac, verify an actual Telegram command → stored item → phone display → acknowledgement → CLI listing round trip. Also verify a service restart and phone restart with pending offline actions. Development tests do not prove the remote Hermes integration is deployed.
+
+## Manual phone creation (0.5)
+
+Update the Mac to this revision as well as the APK. Existing credentials and pairing do not change. New items appear locally immediately, can be checked off before syncing, and then reach Hermes's local list automatically. Client-generated item IDs and request receipts prevent duplicate creation after a lost response. If the server deduplicates a shopping add against an existing item, the phone retargets subsequent queued edits to that item's ID/revision.
+
+If an older server rejects creation, the phone retains the new item and pauses its queue with a message. Update the Mac (or resolve the active-item limit), then use Shopping → Retry sync. The item is not silently discarded. Natural-language interpretation is still Hermes's job; the phone form uses an explicit title and date/time.

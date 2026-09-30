@@ -55,7 +55,7 @@ function renderLive(){
 window.receiveDashboard=(data,error)=>{
  if(error==='not_paired'&&!window.liveMode)return;
  if(error==='disconnected'){window.clearTasks?.();localStorage.removeItem('live-dashboard');location.reload();return;}
- if(error==='pairing_changed'){window.clearTasks?.();snapshot=null;receivedAt=null;localStorage.removeItem('live-dashboard');transport='connecting';renderLive();return;}
+ if(error==='pairing_changed'){window.prepareTaskPairing?.();snapshot=null;receivedAt=null;localStorage.removeItem('live-dashboard');transport='connecting';renderLive();return;}
  if(data&&data.version===1&&data.providers){window.acceptTasks?.(data.tasks);snapshot=data;receivedAt=new Date().toISOString();transport='connected';try{localStorage.setItem('live-dashboard',JSON.stringify({snapshot,receivedAt}));}catch(e){}}
  else transport='failed';
  renderLive();

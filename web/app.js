@@ -50,6 +50,7 @@ function renderBriefings(){
 }
 function openBriefing(b){if(!b)return;if(!readIds.includes(b.id))readIds.push(b.id);save();renderBriefings();showDetail(window.liveMode?'HERMES · '+(b.published_at||''):'HERMES PREVIEW · DEMO CONTENT',b.title,b.body);}
 function renderTicker(){
+ if(window.renderReminderTicker?.())return;
  if(window.liveMode){renderLiveTicker();return;}
  const active=reminder&&(!reminder.snoozedUntil||Date.now()>=reminder.snoozedUntil);
  $('ticker').classList.toggle('reminder',!!active);$('ticker').querySelector('use').setAttribute('href',active?'#bell':'#news');$('ticker').querySelector('.ticker-label').textContent=active?'REMINDER':'HERMES';
@@ -63,7 +64,7 @@ const sequence=['home','ideas','briefings','shopping'];let start=null;
 $('pages').addEventListener('touchstart',e=>{start={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
 $('pages').addEventListener('touchend',e=>{if(!start)return;const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.7)switchPage(sequence[(sequence.indexOf(page)+(dx<0?1:sequence.length-1))%sequence.length]);start=null;},{passive:true});
 document.addEventListener('pointerdown',()=>{lastTouch=performance.now();});
-document.addEventListener('keydown',e=>{lastTouch=performance.now();if($('detail').open||$('settings').open)return;if(e.key==='ArrowRight'||e.key==='ArrowLeft')switchPage(sequence[(sequence.indexOf(page)+(e.key==='ArrowRight'?1:sequence.length-1))%sequence.length]);});
+document.addEventListener('keydown',e=>{lastTouch=performance.now();if($('detail').open||$('settings').open||$('task-editor').open||$('reminder-list-dialog').open)return;if(e.key==='ArrowRight'||e.key==='ArrowLeft')switchPage(sequence[(sequence.indexOf(page)+(e.key==='ArrowRight'?1:sequence.length-1))%sequence.length]);});
 function applySettings(){save();document.documentElement.dataset.theme=C.theme(settings.theme,new Date());$('theme-label').textContent=settings.theme.toUpperCase();$('theme-select').value=settings.theme;$('scroll-setting').checked=settings.scroll;$('rotate-setting').checked=settings.rotate;$('ticker-setting').checked=settings.ticker;renderTicker();}
 $('theme-toggle').onclick=()=>{const modes=['auto','light','dark'];settings.theme=modes[(modes.indexOf(settings.theme)+1)%3];applySettings();};
 $('theme-select').onchange=e=>{settings.theme=e.target.value;applySettings();};
@@ -73,7 +74,7 @@ for(const id of ['detail','settings'])$(id).addEventListener('close',()=>{lastTo
 $('demo-reminder').onclick=()=>{reminder={snoozedUntil:0};persistReminder();renderTicker();$('settings').close();};
 function tick(){const now=new Date();$('local-time').textContent=C.clock(now,C.zone);$('local-date').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:C.zone,weekday:'short',day:'numeric',month:'short'}).format(now).replace(',','').toUpperCase();$('family-clocks').replaceChildren();for(const [name,tz] of [['London','Europe/London'],['Marseille','Europe/Paris'],['Minsk','Europe/Minsk']]){const row=make('div','family-row'),right=make('span'),time=make('time','',C.clock(now,tz));right.append(time);const diff=C.dayOffset(now,tz);if(diff)right.append(make('span','date-offset',`${diff>0?'+':''}${diff}d`));row.append(make('span','',name),right);$('family-clocks').append(row);}document.documentElement.dataset.theme=C.theme(settings.theme,now);const sun=C.sunTimes(now),fmt=n=>`${String(Math.floor(n/60)).padStart(2,'0')}:${String(Math.floor(n%60)).padStart(2,'0')}`;$('sun-times').textContent=`Sydney sun ≈ ${fmt(sun.rise)}–${fmt(sun.set)}`;if(reminder?.snoozedUntil&&Date.now()>=reminder.snoozedUntil){reminder.snoozedUntil=0;persistReminder();renderTicker();}}
 let previous=performance.now(),scrollRemainder=0;
-function animate(now){const dt=Math.min(now-previous,100);previous=now;const paused=now-lastTouch<15000||$('detail').open||$('settings').open||document.hidden;const scroll=$('watch-scroll'),max=scroll.scrollHeight-scroll.clientHeight;
+function animate(now){const dt=Math.min(now-previous,100);previous=now;const paused=now-lastTouch<15000||$('detail').open||$('settings').open||$('task-editor').open||$('reminder-list-dialog').open||document.hidden;const scroll=$('watch-scroll'),max=scroll.scrollHeight-scroll.clientHeight;
  $('scroll-status').textContent=!settings.scroll?'MANUAL SCROLL':paused?'Ⅱ TOUCH PAUSED':'↕ AUTO SCROLL';
  if(page==='home'&&max<=1)scrollComplete=true;
  if(page==='home'&&settings.scroll&&!paused&&now>scrollHoldUntil&&max>1){

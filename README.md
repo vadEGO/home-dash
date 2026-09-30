@@ -1,4 +1,4 @@
-# Home Dash — preview 0.4
+# Home Dash — preview 0.5
 
 Landscape fridge dashboard for an existing Solana Seeker, with a separate service on the dedicated Hermes Mac. No app store or Docker required.
 
@@ -11,7 +11,7 @@ Landscape fridge dashboard for an existing Solana Seeker, with a separate servic
 - Entry zone, stop, three targets, no-chase threshold, invalidation, alternative views (up to eight), source details and score breakdown, preserving supplied values and freshness.
 - Top current ideas and substantive changes observed since the initial baseline.
 - Hermes briefings published through a local CLI; unread state and scrolling header ticker.
-- Persistent Sydney-time reminders with Home cards and Done/Snooze, plus a shopping list with check-off/Undo. Offline actions survive restarts and sync back to the Mac.
+- Persistent Sydney-time reminders with Home cards and Done/Snooze, plus a shopping list with check-off/Undo. Add items and reminders directly on the phone or through Hermes. Offline creation and actions survive restarts and sync back to the Mac.
 - Light/dark themes, approximate Sydney sunrise/sunset switching, slow watchlist scrolling, touch pause, swipe navigation and optional page rotation.
 - Native HTTPS pairing with certificate pinning, Android Keystore token encryption and persistent offline snapshots.
 - Versioned Mac install/update/rollback, launchd restart after login, isolated Python runtime and SQLite cache.
@@ -29,7 +29,7 @@ bash scripts/build-apk.sh
 ~/Library/Android/sdk/platform-tools/adb shell am start -n local.fridge.dashboard/.MainActivity
 ```
 
-`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.4.0-preview`; filename retains the prototype name.
+`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.5.0-preview`; filename retains the prototype name.
 
 ## Service and tests
 
@@ -43,6 +43,7 @@ node tests/ui-check.cjs
 node tests/live-ui-check.cjs
 node tests/trade-details-check.cjs
 node tests/tasks-ui-check.cjs
+node tests/manual-tasks-check.cjs
 ```
 
 Set `PLAYWRIGHT_MODULE` to an existing module path if using a shared runtime. HTTPS tests create a temporary localhost service and certificate, then remove them; they do not install launchd jobs. Backend tests cover source failure/cache retention, timestamp preservation, missing data, chart completeness, ranking, change detection, pagination, auth rejection, TLS trust, deployment state preservation and briefing validation.
