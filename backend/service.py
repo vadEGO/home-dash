@@ -220,6 +220,8 @@ def serve(root):
     token = (root/'device-token').read_text().strip()
     if len(token) < 32:
         raise ValueError('Device token too short')
+    from tasks import Tasks
+    tasks = Tasks(root)
     store, market = Store(root), MoneyTrail(config)
     def poll():
         while True:
@@ -236,7 +238,25 @@ def serve(root):
             elif not hmac.compare_digest(self.headers.get('Authorization','').encode(), ('Bearer '+token).encode()):
                 code, payload = 401, {'error':'unauthorized'}
             else:
-                code, payload = 200, store.snapshot()
+                code, payload = 200, dict(store.snapshot(), tasks=tasks.snapshot())
+            self.respond(code, payload)
+        def do_POST(self):
+            if self.path != '/v1/actions':
+                self.respond(404, {'error':'not found'}); return
+            if not hmac.compare_digest(self.headers.get('Authorization','').encode(), ('Bearer '+token).encode()):
+                self.respond(401, {'error':'unauthorized'}); return
+            try:
+                size = int(self.headers.get('Content-Length','0'))
+                if not 0 < size <= 16384:
+                    raise ValueError('Invalid request size')
+                operation = json.loads(self.rfile.read(size))
+                if operation.get('action') not in ('reminder_done','reminder_snooze','shopping_set'):
+                    raise ValueError('Phone action unsupported')
+                result = tasks.apply(operation)
+                self.respond(200, dict(version=1, result=result, tasks=tasks.snapshot()))
+            except (ValueError, TypeError, AttributeError):
+                self.respond(400, {'error':'invalid action'})
+        def respond(self, code, payload):
             body = json.dumps(payload,allow_nan=False).encode()
             self.send_response(code)
             self.send_header('Content-Type','application/json')

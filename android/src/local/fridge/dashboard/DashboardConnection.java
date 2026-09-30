@@ -63,19 +63,24 @@ public final class DashboardConnection {
         cipher.init(Cipher.DECRYPT_MODE,key(),new GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)));
         return new String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),StandardCharsets.UTF_8);
     }
-    private void result(String json, String error, int version) {
+    private void result(String json, String error, int version) { result(json,error,version,false); }
+    private void result(String json, String error, int version, boolean action) {
         activity.runOnUiThread(()->{
-            if (!closed && version==generation) web.evaluateJavascript("window.receiveDashboard("+(json==null?"null":json)+","+JSONObject.quote(error)+")",null);
+            if (!closed && version==generation) web.evaluateJavascript((action?"window.receiveTaskAction(":"window.receiveDashboard(")+(json==null?"null":json)+","+JSONObject.quote(error)+")",null);
         });
     }
     @JavascriptInterface public boolean isConfigured() {return !prefs.getString("url", "").isEmpty();}
-    @JavascriptInterface public void refresh() {
+    @JavascriptInterface public void refresh() { request(null); }
+    @JavascriptInterface public void sendAction(String operation) {
+        if (operation != null && operation.length() <= 16000) request(operation);
+    }
+    private void request(String operation) {
         if (busy || closed) return;
         final int version=generation;
         final String base=prefs.getString("url","");
         final String fingerprint=prefs.getString("pin","");
         final String secret=prefs.getString("token","");
-        if (base.isEmpty()) { result(null,"not_paired",version); return; }
+        if (base.isEmpty()) { result(null,"not_paired",version,operation!=null); return; }
         busy=true;
         worker.execute(()->{
             HttpsURLConnection connection=null;
@@ -94,22 +99,31 @@ public final class DashboardConnection {
                         } catch(Exception e) {throw new java.security.cert.CertificateException("Pinned certificate rejected",e);}
                     }
                 }},null);
-                connection=(HttpsURLConnection)new URL(base+"/v1/dashboard").openConnection();
+                connection=(HttpsURLConnection)new URL(base+(operation==null?"/v1/dashboard":"/v1/actions")).openConnection();
                 connection.setSSLSocketFactory(ssl.getSocketFactory());
                 // Identity is the exact paired certificate, not a public DNS certificate.
                 connection.setHostnameVerifier((host,session)->host.equals(java.net.URI.create(base).getHost()));
                 connection.setInstanceFollowRedirects(false);
                 connection.setConnectTimeout(10000); connection.setReadTimeout(15000);
                 connection.setRequestProperty("Authorization","Bearer "+decrypt(secret));
-                if(connection.getResponseCode()!=200)throw new Exception("Service rejected request");
+                if (operation != null) {
+                    byte[] body=operation.getBytes(StandardCharsets.UTF_8);
+                    connection.setRequestMethod("POST"); connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Type","application/json");
+                    connection.setFixedLengthStreamingMode(body.length);
+                    try(java.io.OutputStream output=connection.getOutputStream()){output.write(body);}
+                }
+                int status=connection.getResponseCode();
+                if(status==400 && operation!=null){result(null,"invalid_action",version,true);return;}
+                if(status!=200)throw new Exception("Service rejected request");
                 try(InputStream in=connection.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()) {
                     byte[] buffer=new byte[8192];int size;
                     while((size=in.read(buffer))!=-1){out.write(buffer,0,size);if(out.size()>2000000)throw new Exception("Response too large");}
                     JSONObject payload=new JSONObject(out.toString("UTF-8"));
                     if(payload.getInt("version")!=1)throw new Exception("Unsupported schema");
-                    result(payload.toString(),"",version);
+                    result(payload.toString(),"",version,operation!=null);
                 }
-            } catch(Exception e) { result(null,"connection_failed",version); }
+            } catch(Exception e) { result(null,"connection_failed",version,operation!=null); }
             finally {if(connection!=null)connection.disconnect();busy=false;}
         });
     }

@@ -1,0 +1,52 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:890,height:400},deviceScaleFactor:2});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.clock.install({time:new Date('2026-09-30T10:00:00Z')});
+ await page.addInitScript(()=>{window.sent=[];window.DashboardNative={refresh(){},isConfigured(){return true;},sendAction(op){window.sent.push(JSON.parse(op));}};});
+ await page.goto(pathToFileURL(path.resolve(__dirname,'../web/index.html')).href);
+ const taskData={instance:'test-mac',items:[{id:'r1',kind:'reminder',title:'Put the bins out',due_at:'2026-09-30T10:01:00Z',revision:1,completed:0,created_at:'2026-09-30T09:00:00Z'}, {id:'s1',kind:'shopping',title:'Milk <b>text</b>',revision:1,completed:0,created_at:'2026-09-30T09:00:00Z'}]};
+ await page.evaluate(tasks=>receiveDashboard({version:1,providers:{},briefings:[],tasks},''),taskData);
+ assert.equal(await page.locator('#due-reminder').isVisible(),false);
+ await page.clock.runFor(61000);
+ assert.equal(await page.locator('#due-reminder').isVisible(),true,'cached reminder becomes due without another snapshot');
+ assert.match(await page.locator('#ticker-text').textContent(),/Put the bins/);
+ if(process.env.SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'fridge-reminder.png')});
+ await page.locator('#due-reminder').getByRole('button',{name:'Snooze 10 min'}).click();
+ assert.equal(await page.locator('#due-reminder').isVisible(),false);
+ await page.reload();
+ assert.equal(await page.locator('#due-reminder').isVisible(),false,'offline snooze survives restart');
+ await page.clock.fastForward(601000);
+ assert.equal(await page.locator('#due-reminder').isVisible(),true);
+ await page.locator('#due-reminder').getByRole('button',{name:'Done',exact:true}).click();
+ assert.equal(await page.locator('#due-reminder').isVisible(),false);
+ await page.locator('[data-page=shopping]').click();
+ assert.match(await page.locator('#shopping-list').textContent(),/Milk <b>text<\/b>/);
+ assert.equal(await page.locator('#shopping-list b').count(),0);
+ await page.getByRole('button',{name:'Check off Milk <b>text</b>',exact:true}).click();
+ assert.equal(await page.locator('.shopping-row.checked').count(),1);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ assert.equal(await page.locator('.shopping-row.checked').count(),0);
+ assert.equal(await page.evaluate(()=>taskState.pending.length),4);
+ // A replayed server snapshot may already include an unacknowledged action.
+ const op=await page.evaluate(()=>taskState.pending[0]);
+ taskData.items[0].due_at=op.due_at;taskData.items[0].revision=2;
+ await page.evaluate(data=>acceptTasks(data),taskData);
+ assert.equal(await page.evaluate(()=>taskItems().find(i=>i.id==='r1').revision),3,'do not double-increment optimistic revisions');
+ await page.evaluate(({op,data})=>receiveTaskAction({result:{request_id:op.request_id,status:'ok'},tasks:data},''),{op,data:taskData});
+ assert.equal(await page.evaluate(()=>taskState.pending.length),3);
+ const next=await page.evaluate(()=>taskState.pending[0]);
+ await page.evaluate(({op,data})=>receiveTaskAction({result:{request_id:op.request_id,status:'conflict'},tasks:data},''),{op:next,data:taskData});
+ assert.match(await page.locator('#tasks-status').textContent(),/changed on the Mac/);
+ assert.equal(await page.evaluate(()=>taskState.pending.filter(x=>x.id==='r1').length),0);
+ if(process.env.SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'fridge-shopping.png')});
+ await page.evaluate(()=>clearTasks());assert.equal(await page.evaluate(()=>taskState.pending.length),0);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: local due time, offline snooze/done/restart, shopping check/undo, safe text, replay handling and conflict recovery.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1)});

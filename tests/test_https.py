@@ -41,6 +41,20 @@ class HTTPSTests(unittest.TestCase):
                 with urllib.request.urlopen(request,context=context) as response:
                     self.assertEqual(json.load(response)['version'],1)
                 with self.assertRaises(urllib.error.URLError):urllib.request.urlopen(request,context=ssl.create_default_context())
+                operation=state/'operation.json'
+                operation.write_text(json.dumps(dict(request_id='telegram-test',action='shopping_add',title='Milk')))
+                created=json.loads(subprocess.check_output([sys.executable,str(ROOT/'backend/tasks.py'),'--state',str(state),'--request',str(operation)]))
+                action=json.dumps(dict(request_id='phone-test',action='shopping_set',id=created['item']['id'],expected_revision=1,completed=True)).encode()
+                rejected=urllib.request.Request(url+'/v1/actions',data=action,headers={'Content-Type':'application/json'})
+                with self.assertRaises(urllib.error.HTTPError) as error:urllib.request.urlopen(rejected,context=context)
+                self.assertEqual(error.exception.code,401)
+                post=urllib.request.Request(url+'/v1/actions',data=action,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
+                for _ in range(2):
+                    with urllib.request.urlopen(post,context=context) as response:
+                        result=json.load(response)
+                        self.assertEqual(result['result']['status'],'ok')
+                        self.assertEqual(result['tasks']['items'][0]['revision'],2)
+                        self.assertEqual(result['tasks']['items'][0]['completed'],1)
             finally:
                 process.terminate();process.wait(timeout=5);process.stderr.close()
 

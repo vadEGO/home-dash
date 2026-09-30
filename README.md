@@ -1,4 +1,4 @@
-# Home Dash — preview 0.3
+# Home Dash — preview 0.4
 
 Landscape fridge dashboard for an existing Solana Seeker, with a separate service on the dedicated Hermes Mac. No app store or Docker required.
 
@@ -11,6 +11,7 @@ Landscape fridge dashboard for an existing Solana Seeker, with a separate servic
 - Entry zone, stop, three targets, no-chase threshold, invalidation, alternative views (up to eight), source details and score breakdown, preserving supplied values and freshness.
 - Top current ideas and substantive changes observed since the initial baseline.
 - Hermes briefings published through a local CLI; unread state and scrolling header ticker.
+- Persistent Sydney-time reminders with Home cards and Done/Snooze, plus a shopping list with check-off/Undo. Offline actions survive restarts and sync back to the Mac.
 - Light/dark themes, approximate Sydney sunrise/sunset switching, slow watchlist scrolling, touch pause, swipe navigation and optional page rotation.
 - Native HTTPS pairing with certificate pinning, Android Keystore token encryption and persistent offline snapshots.
 - Versioned Mac install/update/rollback, launchd restart after login, isolated Python runtime and SQLite cache.
@@ -28,7 +29,7 @@ bash scripts/build-apk.sh
 ~/Library/Android/sdk/platform-tools/adb shell am start -n local.fridge.dashboard/.MainActivity
 ```
 
-`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.3.1-preview`; filename retains the prototype name.
+`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.4.0-preview`; filename retains the prototype name.
 
 ## Service and tests
 
@@ -41,6 +42,7 @@ node --test tests/core.test.cjs
 node tests/ui-check.cjs
 node tests/live-ui-check.cjs
 node tests/trade-details-check.cjs
+node tests/tasks-ui-check.cjs
 ```
 
 Set `PLAYWRIGHT_MODULE` to an existing module path if using a shared runtime. HTTPS tests create a temporary localhost service and certificate, then remove them; they do not install launchd jobs. Backend tests cover source failure/cache retention, timestamp preservation, missing data, chart completeness, ranking, change detection, pagination, auth rejection, TLS trust, deployment state preservation and briefing validation.
@@ -61,7 +63,7 @@ Fetch intervals default to 15 minutes on the Mac and one minute on the phone. Th
 
 - The dedicated Hermes Mac's launchd lifecycle, real Supabase permissions and LAN pairing need deployment verification. No production credentials were available on the build Mac.
 - Hermes CLI publishing is implemented; no Hermes plugin or automated news schedule is installed. Briefing URLs display as text.
-- Live reminders and shared Done/Snooze are not implemented. Demo reminders are hidden in paired mode.
+- Live reminders and shopping are implemented for the foreground app, including offline Done/Snooze and check/Undo. Hermes must deploy the backend and adopt [the task workflow](docs/hermes-tasks.md). No closed-app alarms or notifications are implemented.
 - Screen remains awake while charging; normal phone timeout applies on battery. No brightness/charging policy, wake scheduling, automatic phone launch or lock bypass is implemented.
 - Automatic theme uses an approximate local solar calculation. Extended AMOLED/heat/battery operation still needs real-device observation.
 - Mac HTTPS is intended for the home LAN. Certificate expiry/renewal and key rotation require re-pairing. See the deployment guide.

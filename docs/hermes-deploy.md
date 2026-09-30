@@ -1,4 +1,4 @@
-# Hermes deployment handoff — preview 0.3
+# Hermes deployment handoff — preview 0.4
 
 Deploy on the **dedicated Hermes Mac**, after user login. The development Mac does not host production. This adds a separate Python service; it does not modify Hermes, MoneyTrail, their databases, or their launch agents. No Docker, app store, or Python packages are required. A private venv is created from the Python interpreter you use.
 
@@ -54,7 +54,7 @@ If local curl requires Subject Alternative Names, use a verified Python SSL cont
 
 ## 3. Pair the Seeker
 
-The phone needs APK **0.3.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
+The phone needs APK **0.4.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
 
 ```sh
 python3 scripts/mac-service.py pairing
@@ -96,7 +96,7 @@ Do not publish the example as real news. Keep a stable ID for each briefing; a n
 python3 scripts/mac-service.py publish /absolute/path/to/current-briefings.json
 ```
 
-The phone sees it on its next poll. Hermes may run this after an explicitly requested Telegram-group task or as part of an approved morning/evening job. **Do not create schedules or send Telegram messages automatically during installation.** This release implements briefings, not live reminder acknowledgements; demo reminders are hidden once paired. Real reminders and Done/Snooze sync remain the next integration.
+The phone sees it on its next poll. Hermes may run this after an explicitly requested Telegram-group task or as part of an approved morning/evening job. **Do not create schedules or send Telegram messages automatically during installation.** This release also includes persistent reminders, shopping and acknowledgement sync; enable the [Hermes task workflow](hermes-tasks.md). Demo reminders are hidden once paired. Closed-app Android alarms remain outside this release.
 
 ## 5. Update and rollback
 

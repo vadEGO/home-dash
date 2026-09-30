@@ -6,6 +6,7 @@ function age(iso){const t=Date.parse(iso);if(!Number.isFinite(t))return 'unknown
 function finite(v){return typeof v==='number'&&Number.isFinite(v);}
 function providerStatus(p){if(!p?.data)return 'UNAVAILABLE';if(transport!=='connected')return 'CACHED · OFFLINE';if(p.error)return 'CACHED · UPDATE FAILED';const t=Date.parse(p.fetched_at);return !Number.isFinite(t)||Date.now()-t>30*60000?'CACHED · OLD':'CONNECTED';}
 function renderLiveTicker(){
+ if(window.renderReminderTicker?.())return;
  const b=briefings[0];$('ticker').classList.remove('reminder');$('ticker').querySelector('use').setAttribute('href','#news');$('ticker').querySelector('.ticker-label').textContent='HERMES';
  $('ticker-text').textContent=b?briefings.map(x=>x.title).join('  /  '):'Waiting for your first Hermes briefing';$('ticker-count').textContent=b?'›':'';$('ticker-text').classList.toggle('running',!!b&&settings.ticker);$('ticker').onclick=()=>b&&openBriefing(b);
 }
@@ -53,9 +54,9 @@ function renderLive(){
 }
 window.receiveDashboard=(data,error)=>{
  if(error==='not_paired'&&!window.liveMode)return;
- if(error==='disconnected'){localStorage.removeItem('live-dashboard');location.reload();return;}
- if(error==='pairing_changed'){snapshot=null;receivedAt=null;localStorage.removeItem('live-dashboard');transport='connecting';renderLive();return;}
- if(data&&data.version===1&&data.providers){snapshot=data;receivedAt=new Date().toISOString();transport='connected';try{localStorage.setItem('live-dashboard',JSON.stringify({snapshot,receivedAt}));}catch(e){}}
+ if(error==='disconnected'){window.clearTasks?.();localStorage.removeItem('live-dashboard');location.reload();return;}
+ if(error==='pairing_changed'){window.clearTasks?.();snapshot=null;receivedAt=null;localStorage.removeItem('live-dashboard');transport='connecting';renderLive();return;}
+ if(data&&data.version===1&&data.providers){window.acceptTasks?.(data.tasks);snapshot=data;receivedAt=new Date().toISOString();transport='connected';try{localStorage.setItem('live-dashboard',JSON.stringify({snapshot,receivedAt}));}catch(e){}}
  else transport='failed';
  renderLive();
 };
