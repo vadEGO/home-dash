@@ -45,6 +45,10 @@ node tests/trade-details-check.cjs
 
 Set `PLAYWRIGHT_MODULE` to an existing module path if using a shared runtime. HTTPS tests create a temporary localhost service and certificate, then remove them; they do not install launchd jobs. Backend tests cover source failure/cache retention, timestamp preservation, missing data, chart completeness, ranking, change detection, pagination, auth rejection, TLS trust, deployment state preservation and briefing validation.
 
+## Personal watchlist
+
+The ordered 18-asset list is in `backend/watchlist.json`. New installs use it; existing installs apply it with `python3 scripts/mac-service.py watchlist backend/watchlist.json`, then restart. This preserves credentials. Unresolved instrument mappings remain visible without substituted quotes or scores. See the deployment guide for pending identity checks.
+
 ## Data semantics
 
 The MoneyTrail adapter uses `public_opportunity_action_board`, matching the inspected dashboard read model. For each watchlist symbol it selects by action state, descending score, confirmations, then ID. The watchlist can include research needing review; detail views show original statuses and timestamps. Ideas require MoneyTrail's current-idea freshness fields, a positive price and a quote no older than seven days, then rank by composite score. The app does not calculate investment scores or place trades.

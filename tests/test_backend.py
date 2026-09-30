@@ -80,6 +80,20 @@ class BackendTests(unittest.TestCase):
             store.refresh('market',lambda:{'ideas':[dict(a)],'assets':[]})
             self.assertIsNotNone(store.snapshot()['providers']['market']['data']['ideas'][0]['changed_at'])
             store.db.close()
+    def test_display_symbol_and_unresolved_instrument_never_substitute(self):
+        client=s.MoneyTrail(dict(supabase_url='https://example.com',supabase_publishable_key='x',watchlist=[
+            {'symbol':'BTC-USD','moneytrail_symbol':'BTC'}, {'symbol':'GOLD','moneytrail_symbol':None}]))
+        candle_symbols=[]
+        def query(table,params):
+            if table=='market_candles':
+                candle_symbols.append(params['symbol']);return []
+            return [{'id':'btc','symbol':'BTC','current_price':100},{'id':'wrong','symbol':'GOLD','current_price':50}]
+        client.query=query
+        assets=client.load()['assets']
+        self.assertEqual(assets[0]['symbol'],'BTC-USD')
+        self.assertEqual(assets[0]['price'],100)
+        self.assertIsNone(assets[1]['price'])
+        self.assertEqual(candle_symbols,['eq.BTC'])
     def test_adapter_paginates_and_preserves_missing_history(self):
         client=s.MoneyTrail(dict(supabase_url='https://example.com',supabase_publishable_key='x',watchlist=['SOL','BTC']))
         calls=[]

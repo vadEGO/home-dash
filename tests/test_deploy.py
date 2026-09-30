@@ -23,6 +23,8 @@ class DeployTests(unittest.TestCase):
                     with tarfile.open(fileobj=kwargs['stdout'],mode='w') as archive:
                         info=tarfile.TarInfo('backend/service.py');data=b'print("fixture")';info.size=len(data)
                         archive.addfile(info,io.BytesIO(data))
+                        info=tarfile.TarInfo('backend/watchlist.json');data=b'[{"symbol":"SOL","moneytrail_symbol":"SOL"}]';info.size=len(data)
+                        archive.addfile(info,io.BytesIO(data))
             with patch.object(d,'ROOT',root),patch.object(d,'PLIST',plist),patch.object(d,'run',side_effect=fake_run),patch.object(d,'restart') as restart,patch.object(d.subprocess,'check_output',side_effect=['a'*40,'b'*40]):
                 d.install('first');d.install('second')
                 self.assertEqual(restart.call_count,2)
@@ -33,6 +35,16 @@ class DeployTests(unittest.TestCase):
             job=plistlib.loads(plist.read_bytes())
             self.assertEqual(job['ProgramArguments'][0],str(root/'runtime/bin/python3'))
             self.assertIn('b'*40,job['ProgramArguments'][1])
+    def test_watchlist_update_preserves_credentials(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'config.json').write_text(json.dumps({'supabase_publishable_key':'keep-secret','port':8765,'watchlist':['OLD']}))
+            source=root/'list.json';source.write_text(json.dumps([{'symbol':'BTC-USD','moneytrail_symbol':'BTC'}]))
+            with patch.object(d,'ROOT',root):d.apply_watchlist(source)
+            config=json.loads((root/'config.json').read_text())
+            self.assertEqual(config['supabase_publishable_key'],'keep-secret')
+            self.assertEqual(config['port'],8765)
+            self.assertEqual(config['watchlist'][0]['symbol'],'BTC-USD')
     def test_publish_rejects_invalid_data_without_replacing_previous(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);source=root/'input.json'

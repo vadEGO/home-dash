@@ -143,10 +143,22 @@ class MoneyTrail:
             groups.setdefault(sym, []).append(row)
         now = time.time()
         assets = []
-        for sym in self.symbols:
-            siblings = groups.get(sym, [])
+        for item in self.symbols:
+            # Legacy string configs remain supported. Display names are independent
+            # from exact source identities; unresolved identities never fetch quotes.
+            entry = {'symbol': item, 'moneytrail_symbol': item} if isinstance(item, str) else item
+            sym = entry.get('moneytrail_symbol')
+            siblings = groups.get(sym, []) if sym else []
             chosen = sorted(siblings, key=primary_key)
-            asset = normalize(chosen[0] if chosen else {'symbol': sym}, siblings)
+            asset = normalize(chosen[0] if chosen else {'symbol': entry['symbol']}, siblings)
+            asset['source_symbol'] = sym
+            asset['symbol'] = entry['symbol']
+            asset['name'] = entry.get('name', entry['symbol'])
+            asset['mapping_status'] = 'configured' if sym else 'awaiting instrument mapping'
+            if not sym:
+                asset['thesis'] = 'Instrument mapping needs confirmation on the Hermes Mac. No quote or score has been substituted.'
+                assets.append(asset)
+                continue
             try:
                 candles = self.query('market_candles', dict(select='ts,close', symbol='eq.'+sym, interval='eq.1d', order='ts.desc', limit=30))
                 asset.update(chart(candles, now))

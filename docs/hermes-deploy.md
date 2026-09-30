@@ -34,7 +34,7 @@ Edit `~/Library/Application Support/HomeDash/config.json` directly on the dedica
 
 Use the existing **publishable/anon read access**, never a service-role or database administrator key. Do not print, commit, upload, or send the contents of either environment file. Do not change RLS policies or broaden access to make this work. If chart history is not readable with current permissions, charts remain unavailable.
 
-The initial configurable watchlist is `SOL, SUI, BTC, ETH, TAO, PENDLE`, based on the supplied screenshots. Confirm these symbols match MoneyTrail's `normalized_symbol`; don't silently map unrelated instruments. Prices are displayed in USD, matching the inspected MoneyTrail price contract. Confirm that contract on this deployment before treating quotes as usable. There is no currency conversion.
+The personal 18-entry watchlist is versioned in `backend/watchlist.json`, in the user's requested order. Display symbols are independent from `moneytrail_symbol`, which must exactly match the intended MoneyTrail instrument. A null mapping deliberately produces an unpriced, unscored placeholder. Do not silently substitute an unrelated instrument. Prices are displayed in USD, matching the inspected MoneyTrail price contract. Confirm that contract on this deployment before treating quotes as usable. There is no currency conversion.
 
 Defaults: weather and MoneyTrail fetch every **900 seconds**; phone checks its Mac every **60 seconds** while the UI runs. A fetch does not force MoneyTrail to generate fresh scores or quotes. Change `refresh_seconds` if needed; minimum 60 seconds. Restart after changing config:
 
@@ -111,3 +111,22 @@ Return the deployed commit, Python version, launchd status, whether weather/mark
 ## Trade detail update (0.3)
 
 Deploy this revision on the Mac as well as updating the phone to receive entry/exit levels, thesis, source score components and alternative views. Old snapshots remain readable with missing fields shown as unavailable. Level changes count as meaningful research changes; adding fields during the 0.2 → 0.3 upgrade alone does not. Source links remain text; execution and trading actions remain disabled. Test a real idea against MoneyTrail: entry range, stop, targets, thesis and level freshness should match exactly.
+
+## Apply the personal watchlist to an existing installation
+
+An ordinary code update preserves config, so explicitly apply the requested list after installing this revision:
+
+```sh
+python3 scripts/mac-service.py watchlist backend/watchlist.json
+python3 scripts/mac-service.py restart
+```
+
+This replaces only the `watchlist` property and preserves credentials, port and other settings. New installations use this list automatically. Use a locally adjusted JSON file instead if mappings have been verified; reapplying the repository file replaces those local mappings.
+
+Ordered display list: CRM, TSLA, IONQ, SPCX, BTC-USD, ROBO, GOLD, BRENT, ETH, SOL, LINK, MET, PYTH, SUI, JUP, JTO, KMNO, SONIC.
+
+Pending user clarification: SPCX instrument, gold spot versus company/fund, and Sonic Labs versus Sonic SVM. Brent is intended as the benchmark; verify the precise upstream series, units and any futures roll convention. Meteora's token symbol is MET, which also collides with an equity ticker: verify its full instrument identity before enabling its MoneyTrail mapping. These five mappings currently remain null. Do not use MetLife prices for Meteora, or a generic `S` equity quote for Sonic. Crypto names otherwise use their governance/native token, with Jito represented as JTO rather than JitoSOL. Confirm source identity on deployment; no source aliases are guessed by the adapter.
+
+Reference identities: [Meteora MET](https://ir.meteora.ag/), [Chainlink LINK](https://chain.link/article/what-is-link-token), [Pyth PYTH](https://docs.pyth.network/pyth-token), [Jupiter JUP](https://discuss.jup.ag/t/jup-the-genesis-post/478), [Jito JTO](https://www.jito.network/docs/governance/the-jito-governance-token-jto/), [Kamino KMNO](https://kamino.com/), [Sonic Labs S](https://docs.soniclabs.com/sonic/s-token).
+
+BTC-USD displays the user's requested pair label while querying MoneyTrail's BTC group. Confirm that group's quote is USD. A missing research row stays visible without a score; this release does not add a second quote provider for uncovered assets. Configuring this list does not create MoneyTrail research or scores.

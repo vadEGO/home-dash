@@ -41,7 +41,7 @@ def install(revision):
     config_path = ROOT/'config.json'
     if not config_path.exists():
         config_path.write_text(json.dumps(dict(bind='0.0.0.0',port=8765,refresh_seconds=900,
-            watchlist=['SOL','SUI','BTC','ETH','TAO','PENDLE'],supabase_url='',supabase_publishable_key=''),indent=2)+'\n')
+            watchlist=json.loads((release/'backend/watchlist.json').read_text()),supabase_url='',supabase_publishable_key=''),indent=2)+'\n')
     if not (ROOT/'device-token').exists():
         (ROOT/'device-token').write_text(secrets.token_urlsafe(32)+'\n')
     if not (ROOT/'server.crt').exists():
@@ -63,6 +63,28 @@ def restart():
     domain = 'gui/'+str(os.getuid())
     subprocess.run(['launchctl','bootout',domain+'/'+LABEL],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     run('launchctl','bootstrap',domain,str(PLIST))
+
+def apply_watchlist(path):
+    value = json.loads(Path(path).read_text())
+    if not isinstance(value, list) or not value or len(value) > 100:
+        raise ValueError('Watchlist must contain 1–100 entries')
+    symbols = []
+    for entry in value:
+        if not isinstance(entry, dict) or not isinstance(entry.get('symbol'), str) or not entry['symbol'].strip():
+            raise ValueError('Each entry requires a display symbol')
+        mapped = entry.get('moneytrail_symbol')
+        if mapped is not None and (not isinstance(mapped, str) or not mapped.strip()):
+            raise ValueError('moneytrail_symbol must be an exact source symbol or null')
+        symbols.append(entry['symbol'])
+    if len(set(symbols)) != len(symbols):
+        raise ValueError('Duplicate display symbols')
+    config_path = ROOT/'config.json'
+    config = json.loads(config_path.read_text())
+    config['watchlist'] = value
+    temp = ROOT/'config.json.tmp'
+    temp.write_text(json.dumps(config, indent=2)+'\n')
+    temp.replace(config_path)
+    print('Saved '+str(len(value))+' watchlist entries. Restart the service to apply.')
 
 def publish(path):
     value = json.loads(Path(path).read_text())
@@ -91,12 +113,14 @@ if __name__ == '__main__':
         raise SystemExit('Use Python 3.11.8 or newer (the Hermes Python 3.11.14 interpreter is suitable).')
     os.umask(0o077)
     parser=argparse.ArgumentParser()
-    parser.add_argument('command',choices=['install','restart','status','pairing','publish','rollback'])
+    parser.add_argument('command',choices=['install','restart','status','pairing','publish','rollback','watchlist'])
     parser.add_argument('value',nargs='?')
     args=parser.parse_args()
     if args.command=='install':
         if not args.value: parser.error('install requires an explicit commit or tag')
         install(args.value)
+    elif args.command=='watchlist':
+        apply_watchlist(args.value or REPO/'backend/watchlist.json')
     elif args.command=='restart': restart()
     elif args.command=='status': run('launchctl','print','gui/'+str(os.getuid())+'/'+LABEL)
     elif args.command=='rollback':

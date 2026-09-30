@@ -1,0 +1,20 @@
+[
+  {"symbol":"CRM","name":"Salesforce","moneytrail_symbol":"CRM"},
+  {"symbol":"TSLA","name":"Tesla","moneytrail_symbol":"TSLA"},
+  {"symbol":"IONQ","name":"IonQ","moneytrail_symbol":"IONQ"},
+  {"symbol":"SPCX","name":"SPCX — confirm instrument","moneytrail_symbol":null},
+  {"symbol":"BTC-USD","name":"Bitcoin / USD","moneytrail_symbol":"BTC"},
+  {"symbol":"ROBO","name":"ROBO","moneytrail_symbol":"ROBO"},
+  {"symbol":"GOLD","name":"Gold — confirm instrument","moneytrail_symbol":null},
+  {"symbol":"BRENT","name":"Brent Crude benchmark","moneytrail_symbol":null},
+  {"symbol":"ETH","name":"Ethereum","moneytrail_symbol":"ETH"},
+  {"symbol":"SOL","name":"Solana","moneytrail_symbol":"SOL"},
+  {"symbol":"LINK","name":"Chainlink","moneytrail_symbol":"LINK"},
+  {"symbol":"MET","name":"Meteora","moneytrail_symbol":null},
+  {"symbol":"PYTH","name":"Pyth Network","moneytrail_symbol":"PYTH"},
+  {"symbol":"SUI","name":"Sui","moneytrail_symbol":"SUI"},
+  {"symbol":"JUP","name":"Jupiter","moneytrail_symbol":"JUP"},
+  {"symbol":"JTO","name":"Jito governance token","moneytrail_symbol":"JTO"},
+  {"symbol":"KMNO","name":"Kamino","moneytrail_symbol":"KMNO"},
+  {"symbol":"SONIC","name":"Sonic — confirm network","moneytrail_symbol":null}
+]
