@@ -8,7 +8,8 @@ java_dir="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Ho
 build_dir="$project_dir/build"
 sign_dir="$project_dir/.signing"
 mkdir -p "$build_dir/classes" "$build_dir/dex" "$sign_dir" "$project_dir/dist"
-"$build_tools/aapt2" link -I "$android_jar" --manifest "$project_dir/android/AndroidManifest.xml" -A "$project_dir/web" -o "$build_dir/base.apk"
+"$build_tools/aapt2" compile --dir "$project_dir/android/res" -o "$build_dir/resources.zip"
+"$build_tools/aapt2" link -I "$android_jar" --manifest "$project_dir/android/AndroidManifest.xml" -A "$project_dir/web" -o "$build_dir/base.apk" "$build_dir/resources.zip"
 "$java_dir/bin/javac" -source 8 -target 8 -Xlint:-options -classpath "$android_jar" -d "$build_dir/classes" "$project_dir"/android/src/local/fridge/dashboard/*.java
 "$java_dir/bin/jar" cf "$build_dir/classes.jar" -C "$build_dir/classes" .
 JAVA_HOME="$java_dir" "$build_tools/d8" --lib "$android_jar" --min-api 26 --output "$build_dir/dex" "$build_dir/classes.jar"

@@ -28,7 +28,7 @@ bash scripts/build-apk.sh
 ~/Library/Android/sdk/platform-tools/adb shell am start -n local.fridge.dashboard/.MainActivity
 ```
 
-`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.3.0-preview`; filename retains the prototype name.
+`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.3.1-preview`; filename retains the prototype name.
 
 ## Service and tests
 
@@ -69,3 +69,7 @@ Fetch intervals default to 15 minutes on the Mac and one minute on the phone. Th
 ## Validation on the build Mac
 
 Python, core JavaScript and browser tests pass. A real Sydney weather request succeeded with verified TLS. APK built, signature verified and installed on the connected Android 16 Seeker. Production MoneyTrail, launchd recovery and native phone-to-dedicated-Mac pairing are pending the Git handoff.
+
+## Reopening the phone app
+
+Find **Fridge Dashboard** in the app drawer (mint fridge/chart icon on a dark background). Tap it to reopen after closing it. Long-press the icon and drag it onto the home screen for quicker access. Adaptive icons also support Android themed icons.
