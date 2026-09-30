@@ -1,0 +1,37 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ const page=await browser.newPage({viewport:{width:890,height:400},deviceScaleFactor:2});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.clock.install();
+ await page.goto(pathToFileURL(path.resolve(__dirname,'../web/index.html')).href);
+ assert.equal(await page.locator('.watch-row').count(),8);
+ await page.clock.runFor(20000);
+ assert.ok(await page.locator('#watch-scroll').evaluate(e=>e.scrollTop)>0,'watchlist should scroll');
+ await page.locator('#watch-scroll').dispatchEvent('pointerdown');
+ const before=await page.locator('#watch-scroll').evaluate(e=>e.scrollTop);
+ await page.clock.runFor(5000);
+ assert.equal(await page.locator('#watch-scroll').evaluate(e=>e.scrollTop),before,'touch should pause');
+ await page.locator('#theme-toggle').click();await page.locator('#theme-toggle').click();
+ assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+
+ await page.locator('[data-page=ideas]').click();assert.ok(await page.locator('#page-ideas').isVisible());
+ await page.locator('[data-page=briefings]').click();await page.locator('.briefing-row').first().click();
+ assert.ok(await page.locator('#detail').isVisible());assert.equal(await page.locator('#unread').textContent(),'1');
+ await page.locator('#detail-close').click();await page.locator('#settings-open').click();await page.locator('#demo-reminder').click();
+ assert.ok(await page.locator('#ticker').evaluate(e=>e.classList.contains('reminder')));
+ await page.locator('#ticker').click();await page.getByRole('button',{name:'Snooze 10 min',exact:true}).click();
+ assert.ok(!(await page.locator('#ticker').evaluate(e=>e.classList.contains('reminder'))));
+ await page.clock.fastForward(601000);
+ assert.ok(await page.locator('#ticker').evaluate(e=>e.classList.contains('reminder')));
+ await page.locator('#ticker').click();await page.getByRole('button',{name:'Done',exact:true}).click();
+ assert.ok(!(await page.locator('#ticker').evaluate(e=>e.classList.contains('reminder'))));
+ await page.reload();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+ assert.equal(await page.locator('#unread').textContent(),'1');
+ assert.deepEqual(errors,[]);
+ console.log('PASS: scrolling, touch pause, themes/persistence, navigation, unread state, reminder snooze/expiry/done; no JS errors.');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

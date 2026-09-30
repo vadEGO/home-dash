@@ -1,0 +1,15 @@
+build/
+dist/
+.signing/
+.DS_Store
+node_modules/
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db
