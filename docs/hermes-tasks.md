@@ -1,6 +1,6 @@
-# Reminders and shopping — Hermes handoff (0.5)
+# Reminders and shopping — Hermes handoff (0.6)
 
-Deploy the matching Mac service and APK 0.5.0-preview. The phone update alone cannot enable this feature. The existing HTTPS address, certificate and device token are retained. No additional service, cloud account or Telegram bot is required.
+Deploy the matching Mac service and APK 0.6.0-preview. The phone update alone cannot enable this feature. The existing HTTPS address, certificate and device token are retained. No additional service, cloud account or Telegram bot is required.
 
 ## Enable the workflow on the dedicated Mac
 
@@ -74,7 +74,7 @@ A successful result includes the saved item, ID and revision. `conflict` or `mis
 
 ## Phone behaviour and limits
 
-The authenticated dashboard snapshot includes tasks; `POST /v1/actions` accepts reminder/shopping creation, Done, Snooze and shopping check/undo from the phone. The existing token and certificate pin protect these requests. The local Hermes CLI and phone forms both create items in the same database.
+The authenticated dashboard snapshot includes tasks; `POST /v1/actions` accepts reminder/shopping creation, Done, Snooze and shopping check/undo and item deletion from the phone. The existing token and certificate pin protect these requests. The local Hermes CLI and phone forms both create items in the same database.
 
 - A due reminder takes priority over the briefing ticker, displays a Home card, and pauses automatic page rotation. On other pages it stays in the header; tap to return Home. Multiple due reminders are ordered by due time; completing/snoozing the oldest reveals the next.
 - Done and Snooze 10 min update locally immediately. Snooze is measured from the tap time. Both remain saved if offline, with retries after reconnect.
@@ -96,3 +96,17 @@ On the dedicated Mac, verify an actual Telegram command → stored item → phon
 Update the Mac to this revision as well as the APK. Existing credentials and pairing do not change. New items appear locally immediately, can be checked off before syncing, and then reach Hermes's local list automatically. Client-generated item IDs and request receipts prevent duplicate creation after a lost response. If the server deduplicates a shopping add against an existing item, the phone retargets subsequent queued edits to that item's ID/revision.
 
 If an older server rejects creation, the phone retains the new item and pauses its queue with a message. Update the Mac (or resolve the active-item limit), then use Shopping → Retry sync. The item is not silently discarded. Natural-language interpretation is still Hermes's job; the phone form uses an explicit title and date/time.
+
+## Swipe deletion (0.6)
+
+Swipe left on a shopping item or reminder to reveal Delete; swipe right closes the action. The ⋯ button exposes the same action without a gesture. A swipe only reveals the button: it never deletes on its own and does not navigate between pages.
+
+After tapping Delete, the item disappears locally with an eight-second Undo option. The phone defers sending that delete until the Undo window expires. Pending deletes survive restart and sync after reconnection. Deleted items remain as tombstones on the Mac, are excluded from normal snapshots and cannot be restored by a stale edit or retry. Re-adding a shopping item with the same title creates a new active item. Rollback to an older service may display deleted shopping entries as completed; use the updated service for deletion support.
+
+Hermes can delete an explicitly identified item using the existing CLI with its current revision:
+
+```json
+{"request_id":"telegram:CHAT:MESSAGE:delete:0","action":"item_delete","id":"ITEM-ID-FROM-LIST","expected_revision":1}
+```
+
+CLI deletion commits immediately; the eight-second grace period belongs to the phone UI. Do not erase SQLite rows or replace the whole list. A stale revision is rejected. Update both APK and Mac service; an older Mac rejects unsupported deletes, which the phone reports and rolls back visibly.

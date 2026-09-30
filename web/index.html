@@ -63,6 +63,7 @@
   <button id="settings-open" class="settings-button" aria-label="Settings"><svg class="icon"><use href="#gear"/></svg></button>
  </nav>
 </div>
+<div id="delete-toast" role="status" hidden><span id="delete-toast-text"></span><button id="undo-delete">Undo</button></div>
 <dialog id="detail"><div class="dialog-top"><span id="detail-label" class="eyebrow"></span><button id="detail-close" aria-label="Close">×</button></div><h2 id="detail-title"></h2><div id="detail-body"></div><div id="detail-actions"></div></dialog>
 <dialog id="task-editor"><form id="task-form">
  <div class="dialog-top"><span id="task-editor-label" class="eyebrow">ADD ITEM</span><button id="task-editor-close" type="button" aria-label="Close task form">×</button></div>
@@ -82,7 +83,7 @@
  </div>
  <p class="settings-note">Touch pauses scrolling for 15 seconds. Page rotation waits for the watchlist to finish. Clocks use your phone's time and each city's time zone.</p>
  <div class="demo-controls"><button id="demo-reminder">Show demo reminder</button><span id="sun-times"></span></div>
- <div class="demo-controls"><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button><button id="upcoming-reminders">Reminders</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.5 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery.</p>
+ <div class="demo-controls"><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button><button id="upcoming-reminders">Reminders</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.6 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery.</p>
 </dialog>
 <script src="core.js"></script><script src="app.js"></script><script src="trade-details.js"></script><script src="tasks.js"></script><script src="live.js"></script>
 </body></html>

@@ -60,6 +60,12 @@ class HTTPSTests(unittest.TestCase):
                         saved=next(i for i in result['tasks']['items'] if i['id']==created['item']['id'])
                         self.assertEqual(saved['revision'],2)
                         self.assertEqual(saved['completed'],1)
+                deletion=json.dumps(dict(request_id='phone-delete',action='item_delete',id=created['item']['id'],expected_revision=2)).encode()
+                delete_request=urllib.request.Request(url+'/v1/actions',data=deletion,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
+                with urllib.request.urlopen(delete_request,context=context) as response:
+                    payload=json.load(response)
+                    self.assertEqual(payload['result']['status'],'ok')
+                    self.assertNotIn(created['item']['id'],[i['id'] for i in payload['tasks']['items']])
             finally:
                 process.terminate();process.wait(timeout=5);process.stderr.close()
 

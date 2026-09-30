@@ -1,4 +1,4 @@
-# Hermes deployment handoff — preview 0.5
+# Hermes deployment handoff — preview 0.6
 
 Deploy on the **dedicated Hermes Mac**, after user login. The development Mac does not host production. This adds a separate Python service; it does not modify Hermes, MoneyTrail, their databases, or their launch agents. No Docker, app store, or Python packages are required. A private venv is created from the Python interpreter you use.
 
@@ -54,7 +54,7 @@ If local curl requires Subject Alternative Names, use a verified Python SSL cont
 
 ## 3. Pair the Seeker
 
-The phone needs APK **0.5.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
+The phone needs APK **0.6.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
 
 ```sh
 python3 scripts/mac-service.py pairing

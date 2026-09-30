@@ -38,6 +38,7 @@ class Tasks:
                 CREATE TABLE IF NOT EXISTS items(id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL,
                   due_at TEXT, completed INTEGER NOT NULL DEFAULT 0, revision INTEGER NOT NULL DEFAULT 1,
                   created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS deleted_items(id TEXT PRIMARY KEY, deleted_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS meta(id INTEGER PRIMARY KEY, instance TEXT NOT NULL);
             ''')
@@ -54,7 +55,7 @@ class Tasks:
     def snapshot(self):
         with self.connect() as db:
             return dict(instance=db.execute('SELECT instance FROM meta WHERE id=1').fetchone()[0],
-                items=[dict(r) for r in db.execute('SELECT * FROM items WHERE completed=0 OR id IN (SELECT id FROM items WHERE completed=1 ORDER BY updated_at DESC LIMIT 100) ORDER BY created_at,id')])
+                items=[dict(r) for r in db.execute('SELECT * FROM items WHERE NOT EXISTS (SELECT 1 FROM deleted_items WHERE deleted_items.id=items.id) AND (completed=0 OR id IN (SELECT id FROM items WHERE completed=1 AND id NOT IN (SELECT id FROM deleted_items) ORDER BY updated_at DESC LIMIT 100)) ORDER BY created_at,id')])
     def apply(self, operation):
         if not isinstance(operation, dict):
             raise ValueError('Operation must be an object')
@@ -92,16 +93,19 @@ class Tasks:
                         raise ValueError('Client item id already exists')
                     db.execute('INSERT INTO items VALUES (?,?,?,?,0,1,?,?)', (item_id, kind, title, due, now(), now()))
                 result = dict(request_id=request_id, status='ok', item=dict(db.execute('SELECT * FROM items WHERE id=?', (item_id,)).fetchone()))
-            elif action in ('reminder_done', 'reminder_snooze', 'shopping_set'):
+            elif action in ('reminder_done', 'reminder_snooze', 'shopping_set', 'item_delete'):
                 row = db.execute('SELECT * FROM items WHERE id=?', (operation.get('id'),)).fetchone()
                 expected = operation.get('expected_revision')
-                if not row:
+                if not row or db.execute('SELECT 1 FROM deleted_items WHERE id=?', (row['id'],)).fetchone():
                     result = dict(request_id=request_id, status='missing')
                 elif type(expected) is not int or expected != row['revision']:
                     result = dict(request_id=request_id, status='conflict', item=dict(row))
                 else:
                     due, complete = row['due_at'], row['completed']
-                    if action == 'shopping_set':
+                    if action == 'item_delete':
+                        db.execute('INSERT INTO deleted_items VALUES (?,?)', (row['id'], now()))
+                        complete = 1
+                    elif action == 'shopping_set':
                         if row['kind'] != 'shopping' or type(operation.get('completed')) is not bool:
                             raise ValueError('shopping_set needs a shopping item and boolean completed')
                         complete = int(operation['completed'])

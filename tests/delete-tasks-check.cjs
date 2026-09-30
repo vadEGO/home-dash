@@ -1,0 +1,46 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:890,height:400},hasTouch:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.clock.install();
+ await page.addInitScript(()=>{window.sent=[];window.DashboardNative={refresh(){},isConfigured(){return true;},sendAction(op){window.sent.push(JSON.parse(op));}};});
+ await page.goto(pathToFileURL(path.resolve(__dirname,'../web/index.html')).href);
+ const data={instance:'mac',items:[{id:'s',kind:'shopping',title:'Milk',completed:0,revision:1,created_at:'2026-09-30T00:00:00Z'},{id:'r',kind:'reminder',title:'Call Mum',due_at:'2030-10-01T10:00:00Z',completed:0,revision:1,created_at:'2026-09-30T00:00:00Z'}]};
+ await page.evaluate(tasks=>receiveDashboard({version:1,providers:{},briefings:[],tasks},''),data);
+ await page.locator('[data-page=shopping]').click();
+ const row=page.locator('#shopping-list .swipe-item').first();
+ await row.evaluate(el=>el.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,touches:[new Touch({identifier:1,target:el,clientX:500,clientY:200})]})));
+ await row.evaluate(el=>el.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,changedTouches:[new Touch({identifier:1,target:el,clientX:350,clientY:205})]})));
+ assert.ok(await row.evaluate(e=>e.classList.contains('revealed')));
+ assert.ok(await page.locator('#page-shopping').isVisible(),'item gesture must not switch pages');
+ await page.clock.runFor(500);
+ await page.getByRole('button',{name:'Delete Milk',exact:true}).click();
+ assert.equal(await page.locator('.shopping-row').count(),0);
+ assert.equal(await page.evaluate(()=>sent.length),0,'delete not sent during Undo window');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ assert.equal(await page.locator('.shopping-row').count(),1);
+ assert.equal(await page.evaluate(()=>taskState.pending.length),0);
+ await page.getByRole('button',{name:'Options for Milk',exact:true}).click();
+ await page.getByRole('button',{name:'Delete Milk',exact:true}).click();
+ await page.reload();await page.locator('[data-page=shopping]').click();
+ assert.equal(await page.locator('.shopping-row').count(),0,'offline deletion survives restart');
+ await page.clock.fastForward(9000);await page.evaluate(()=>flushTasks());
+ assert.equal(await page.evaluate(()=>sent[0].action),'item_delete');
+ const op=await page.evaluate(()=>taskState.pending[0]);data.items=data.items.filter(x=>x.id!=='s');
+ await page.evaluate(({op,tasks})=>receiveTaskAction({result:{status:'ok',request_id:op.request_id},tasks},''),{op,tasks:data});
+ await page.locator('#manage-reminders').click();
+ await page.getByRole('button',{name:'Options for Call Mum',exact:true}).click();
+ await page.getByRole('button',{name:'Delete Call Mum',exact:true}).click();
+ assert.equal(await page.locator('.reminder-list-row').count(),0);
+ assert.equal(await page.locator('#delete-toast').evaluate(e=>e.parentNode.id),'reminder-list-dialog');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ assert.equal(await page.locator('.reminder-list-row').count(),1);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: swipe reveal, page-gesture isolation, delete/Undo, offline restart and delayed sync for shopping/reminders.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -20,6 +20,22 @@ class TaskTests(unittest.TestCase):
         self.assertEqual(done['item']['completed'],1)
         self.assertEqual(self.tasks.apply(op)['item']['id'],op['id'])
         with self.assertRaises(ValueError):self.tasks.apply(dict(op,request_id='different',title='Eggs'))
+    def test_delete_hides_both_kinds_and_retry_cannot_resurrect(self):
+        for kind in ('shopping','reminder'):
+            item=self.tasks.apply(dict(request_id=kind+'-add',action=kind+'_add',title='Delete me',due_at='2026-10-01T20:00'))['item']
+            op=dict(request_id=kind+'-delete',action='item_delete',id=item['id'],expected_revision=1)
+            self.assertEqual(self.tasks.apply(op)['status'],'ok')
+            self.assertEqual(self.tasks.apply(op)['status'],'ok')
+            self.assertNotIn(item['id'],[i['id'] for i in t.Tasks(self.temp.name).snapshot()['items']])
+            stale=dict(request_id=kind+'-stale',action='item_delete',id=item['id'],expected_revision=2)
+            self.assertEqual(self.tasks.apply(stale)['status'],'missing')
+        replacement=self.tasks.apply(dict(request_id='readd',action='shopping_add',title='Delete me'))
+        self.assertEqual(replacement['item']['completed'],0)
+    def test_delete_checks_revision_before_hiding(self):
+        item=self.tasks.apply(dict(request_id='add',action='shopping_add',title='Milk'))['item']
+        result=self.tasks.apply(dict(request_id='del',action='item_delete',id=item['id'],expected_revision=99))
+        self.assertEqual(result['status'],'conflict')
+        self.assertEqual(len(self.tasks.snapshot()['items']),1)
     def test_sydney_time_and_dst(self):
         self.assertEqual(t.due_time('2026-09-30T20:00:00'),'2026-09-30T10:00:00+00:00')
         self.assertEqual(t.due_time('2026-12-01T20:00:00'),'2026-12-01T09:00:00+00:00')

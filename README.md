@@ -1,4 +1,4 @@
-# Home Dash — preview 0.5
+# Home Dash — preview 0.6
 
 Landscape fridge dashboard for an existing Solana Seeker, with a separate service on the dedicated Hermes Mac. No app store or Docker required.
 
@@ -29,7 +29,7 @@ bash scripts/build-apk.sh
 ~/Library/Android/sdk/platform-tools/adb shell am start -n local.fridge.dashboard/.MainActivity
 ```
 
-`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.5.0-preview`; filename retains the prototype name.
+`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.6.0-preview`; filename retains the prototype name.
 
 ## Service and tests
 
@@ -44,6 +44,7 @@ node tests/live-ui-check.cjs
 node tests/trade-details-check.cjs
 node tests/tasks-ui-check.cjs
 node tests/manual-tasks-check.cjs
+node tests/delete-tasks-check.cjs
 ```
 
 Set `PLAYWRIGHT_MODULE` to an existing module path if using a shared runtime. HTTPS tests create a temporary localhost service and certificate, then remove them; they do not install launchd jobs. Backend tests cover source failure/cache retention, timestamp preservation, missing data, chart completeness, ranking, change detection, pagination, auth rejection, TLS trust, deployment state preservation and briefing validation.
@@ -76,3 +77,5 @@ Python, core JavaScript and browser tests pass. A real Sydney weather request su
 ## Reopening the phone app
 
 Find **Fridge Dashboard** in the app drawer (mint fridge/chart icon on a dark background). Tap it to reopen after closing it. Long-press the icon and drag it onto the home screen for quicker access. Adaptive icons also support Android themed icons.
+
+Shopping and reminder rows support swipe left to reveal Delete, swipe right to close, or the accessible ⋯ options button. Deletion has an eight-second Undo window and then syncs through the offline outbox.

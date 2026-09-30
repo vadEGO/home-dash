@@ -11,9 +11,9 @@ function taskItems(){
    continue;
   }
   const item=items.find(i=>i.id===op.id);if(!item||item.revision>op.expected_revision)continue;
-  if(op.action==='reminder_done')item.completed=1;if(op.action==='reminder_snooze')item.due_at=op.due_at;if(op.action==='shopping_set')item.completed=op.completed?1:0;item.revision=op.expected_revision+1;
+  if(op.action==='item_delete')item.deleted=true;if(op.action==='reminder_done')item.completed=1;if(op.action==='reminder_snooze')item.due_at=op.due_at;if(op.action==='shopping_set')item.completed=op.completed?1:0;item.revision=op.expected_revision+1;
  }
- return items;
+ return items.filter(i=>!i.deleted);
 }
 function dueReminders(){return taskItems().filter(i=>i.kind==='reminder'&&!i.completed&&Date.parse(i.due_at)<=Date.now()).sort((a,b)=>Date.parse(a.due_at)-Date.parse(b.due_at)||a.id.localeCompare(b.id));}
 function taskTime(value){return new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));}
@@ -26,6 +26,7 @@ function queueTask(item,action,fields={}){
 }
 function flushTasks(){
  if(!taskState.pending.length||taskState.blockedRequest===taskState.pending[0].request_id||!window.DashboardNative?.sendAction)return;
+ if(taskState.pending[0].not_before>Date.now())return;
  if(sending&&Date.now()-sending.started<30000)return;
  sending={id:taskState.pending[0].request_id,started:Date.now()};
  window.DashboardNative.sendAction(JSON.stringify(taskState.pending[0]));
@@ -73,6 +74,7 @@ window.renderReminderTicker=()=>{
 function renderTasks(force=false){
  const items=taskItems(),due=dueReminders(),shopping=items.filter(i=>i.kind==='shopping');
  window.hasDueReminder=due.length>0;
+ renderDeleteUndo();
  const signature=JSON.stringify([items,due.map(i=>i.id),taskState.pending.length,taskState.message]);if(!force&&signature===lastTaskRender)return;lastTaskRender=signature;
  const card=$('due-reminder');card.replaceChildren();card.hidden=!due.length;$('page-home').classList.toggle('has-reminder',!!due.length);
  if(due.length){const item=due[0],copy=make('button','reminder-copy');copy.append(make('span','eyebrow',`REMINDER · ${taskTime(item.due_at)}${due.length>1?' · +'+(due.length-1)+' MORE':''}`),make('strong','',item.title));copy.onclick=()=>openReminder(item);const done=make('button','task-primary','Done'),snooze=make('button','task-secondary','Snooze 10 min');done.onclick=()=>queueTask(item,'reminder_done');snooze.onclick=()=>queueTask(item,'reminder_snooze',{due_at:new Date(Date.now()+600000).toISOString()});card.append(copy,done,snooze);}
@@ -81,7 +83,7 @@ function renderTasks(force=false){
  $('tasks-status').textContent=taskState.message||(taskState.pending.length?`${taskState.pending.length} SAVED · SYNC PENDING`:taskState.server?'SYNCED WITH MAC':'LOCAL · PAIR TO SYNC');
  const list=$('shopping-list');list.replaceChildren();
  if(!shopping.length)list.append(make('p','settings-note',taskState.server?'Your shopping list is empty. Add an item here or ask Hermes in Telegram.':'Add an item here now. Pair with the Hermes Mac whenever you want to sync.'));
- shopping.sort((a,b)=>a.completed-b.completed||a.created_at.localeCompare(b.created_at)).forEach(item=>{const row=make('div','shopping-row'+(item.completed?' checked':'')),button=make('button','shopping-check',item.completed?'✓':'○');button.setAttribute('aria-label',`${item.completed?'Undo':'Check off'} ${item.title}`);button.onclick=()=>queueTask(item,'shopping_set',{completed:!item.completed});row.append(button,make('span','shopping-title',item.title));if(item.completed){const undo=make('button','shopping-undo','Undo');undo.onclick=()=>queueTask(item,'shopping_set',{completed:false});row.append(undo);}list.append(row);});
+ shopping.sort((a,b)=>a.completed-b.completed||a.created_at.localeCompare(b.created_at)).forEach(item=>{const row=make('div','shopping-row'+(item.completed?' checked':'')),button=make('button','shopping-check',item.completed?'✓':'○');button.setAttribute('aria-label',`${item.completed?'Undo':'Check off'} ${item.title}`);button.onclick=()=>queueTask(item,'shopping_set',{completed:!item.completed});row.append(button,make('span','shopping-title',item.title));if(item.completed){const undo=make('button','shopping-undo','Undo');undo.onclick=()=>queueTask(item,'shopping_set',{completed:false});row.append(undo);}list.append(swipeItem(row,item));});
  renderReminderList();
  if(window.liveMode)renderLiveTicker();else if(due.length)window.renderReminderTicker();else renderTicker();
 }
@@ -89,7 +91,7 @@ function renderReminderList(){
  const list=$('reminder-items');list.replaceChildren();
  const reminders=taskItems().filter(i=>i.kind==='reminder'&&!i.completed).sort((a,b)=>Date.parse(a.due_at)-Date.parse(b.due_at));
  if(!reminders.length)list.append(make('p','settings-note','No active reminders. Add one here or ask Hermes in Telegram.'));
- for(const item of reminders){const row=make('div','reminder-list-row'),copy=make('button','reminder-list-copy');copy.append(make('strong','',item.title),make('span','',`${taskTime(item.due_at)}${Date.parse(item.due_at)<=Date.now()?' · DUE':''}`));copy.onclick=()=>{$('reminder-list-dialog').close();openReminder(item);};const done=make('button','task-primary','Done');done.setAttribute('aria-label',`Mark ${item.title} done`);done.onclick=()=>queueTask(item,'reminder_done');row.append(copy,done);list.append(row);}
+ for(const item of reminders){const row=make('div','reminder-list-row'),copy=make('button','reminder-list-copy');copy.append(make('strong','',item.title),make('span','',`${taskTime(item.due_at)}${Date.parse(item.due_at)<=Date.now()?' · DUE':''}`));copy.onclick=()=>{$('reminder-list-dialog').close();openReminder(item);};const done=make('button','task-primary','Done');done.setAttribute('aria-label',`Mark ${item.title} done`);done.onclick=()=>queueTask(item,'reminder_done');row.append(copy,done);list.append(swipeItem(row,item));}
 }
 function showReminders(){$('settings').close();renderReminderList();$('reminder-list-dialog').showModal();}
 $('upcoming-reminders').onclick=showReminders;$('manage-reminders').onclick=showReminders;
@@ -124,3 +126,39 @@ $('task-form').onsubmit=e=>{
  if(queueTask({id},editingTaskKind==='reminder'?'reminder_add':'shopping_add',fields)){$('task-editor').close();if(editingTaskKind==='reminder')showReminders();else switchPage('shopping');}else $('task-form-error').textContent='Could not save on this phone. Please try again.';
 };
 renderTasks();setInterval(renderTasks,1000);setInterval(flushTasks,5000);
+
+function deleteTask(item){
+ if(queueTask(item,'item_delete',{not_before:Date.now()+8000})){
+  const op=taskState.pending[taskState.pending.length-1];
+  taskState.undoDelete={request_id:op.request_id,title:item.title,expires:op.not_before};
+  saveTasks();renderDeleteUndo();
+ }
+}
+function renderDeleteUndo(){
+ const undo=taskState.undoDelete,visible=undo&&undo.expires>Date.now()&&taskState.pending.some(op=>op.request_id===undo.request_id);
+ const toast=$('delete-toast');toast.hidden=!visible;
+ // A native HTML dialog is in the top layer; put its undo control inside it.
+ const parent=$('reminder-list-dialog').open?$('reminder-list-dialog'):document.body;if(toast.parentNode!==parent)parent.append(toast);
+ if(visible)$('delete-toast-text').textContent=`Deleted ${undo.title}`;
+}
+$('undo-delete').onclick=()=>{
+ const undo=taskState.undoDelete;if(!undo||undo.expires<=Date.now())return;
+ taskState.pending=taskState.pending.filter(op=>op.request_id!==undo.request_id);taskState.undoDelete=null;saveTasks();renderTasks(true);flushTasks();
+};
+function swipeItem(row,item){
+ const wrapper=make('div','swipe-item'),remove=make('button','swipe-delete','Delete');remove.tabIndex=-1;remove.setAttribute('aria-label',`Delete ${item.title}`);
+ remove.onclick=()=>deleteTask(item);wrapper.append(remove,row);
+ const more=make('button','swipe-more','⋯');more.setAttribute('aria-label',`Options for ${item.title}`);row.append(more);
+ function reveal(open){
+  if(open)document.querySelectorAll('.swipe-item.revealed').forEach(n=>{if(n!==wrapper){n.classList.remove('revealed');n.querySelector('.swipe-delete').tabIndex=-1;n.querySelector('.swipe-more').setAttribute('aria-expanded','false');}});
+  wrapper.classList.toggle('revealed',open);remove.tabIndex=open?0:-1;more.setAttribute('aria-expanded',String(open));
+ }
+ more.setAttribute('aria-expanded','false');more.onclick=()=>reveal(!wrapper.classList.contains('revealed'));
+ let origin=null,swipedUntil=0;
+ wrapper.addEventListener('touchstart',e=>{if(e.touches.length===1)origin={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+ wrapper.addEventListener('touchend',e=>{if(!origin)return;const dx=e.changedTouches[0].clientX-origin.x,dy=e.changedTouches[0].clientY-origin.y;origin=null;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.5){reveal(dx<0);swipedUntil=Date.now()+400;e.preventDefault();}},{passive:false});
+ wrapper.addEventListener('touchcancel',()=>{origin=null;},{passive:true});
+ wrapper.addEventListener('click',e=>{if(Date.now()<swipedUntil){e.preventDefault();e.stopPropagation();}},true);
+ wrapper.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();reveal(false);more.focus();}});
+ return wrapper;
+}
