@@ -15,7 +15,7 @@ const assets=[
  {symbol:'NVDA',glyph:'N',price:'128.50',score:null,bias:'—',change:2.4,values:[12,14,13,16,17,15,19,18,22,20,24,23,22,26,25,29,27,29,28,32]},
  {symbol:'GLD',glyph:'G',price:'238.20',score:null,bias:'—',change:.6,values:[17,18,16,19,20,18,21,20,19,22,20,24,21,22,23,21,24,23,25,24]}
 ];
-const briefings=[
+let briefings=[
  {id:'morning',title:'Your morning, in three points',sub:'A preview of the summaries Hermes will send here.',body:['This is a sample briefing, not a current news report.','Your chosen watchlist, Sydney weather and family clocks share one glanceable home screen.','Hermes will publish short summaries with original source links and publication timestamps.','No live connection is configured in this prototype.']},
  {id:'research',title:'What changed on your watchlist',sub:'Score changes, new evidence and ideas worth revisiting.',body:['This is illustrative content for the Briefings page.','A future MoneyTrail adapter will preserve the original score, direction and independent data timestamps.','Refreshing this screen will never make old research appear current.']}
 ];
@@ -47,8 +47,9 @@ function renderBriefings(){
  $('briefing-list').replaceChildren();briefings.forEach((b,i)=>{const row=make('button','briefing-row'),copy=make('div');copy.append(make('strong','',b.title),make('p','',b.sub));row.append(make('span','briefing-number',String(i+1).padStart(2,'0')),copy,make('span','new-label',readIds.includes(b.id)?'READ':'NEW'));row.onclick=()=>openBriefing(b);$('briefing-list').append(row);});
  const count=briefings.filter(b=>!readIds.includes(b.id)).length;$('unread').textContent=count||'';
 }
-function openBriefing(b){if(!readIds.includes(b.id))readIds.push(b.id);save();renderBriefings();showDetail('HERMES PREVIEW · DEMO CONTENT',b.title,b.body);}
+function openBriefing(b){if(!b)return;if(!readIds.includes(b.id))readIds.push(b.id);save();renderBriefings();showDetail(window.liveMode?'HERMES · '+(b.published_at||''):'HERMES PREVIEW · DEMO CONTENT',b.title,b.body);}
 function renderTicker(){
+ if(window.liveMode){renderLiveTicker();return;}
  const active=reminder&&(!reminder.snoozedUntil||Date.now()>=reminder.snoozedUntil);
  $('ticker').classList.toggle('reminder',!!active);$('ticker').querySelector('use').setAttribute('href',active?'#bell':'#news');$('ticker').querySelector('.ticker-label').textContent=active?'REMINDER':'HERMES';
  $('ticker-text').textContent=active?'Demo · Put the bins out':'Demo briefing · Your morning, in three points  /  Research changes for your watchlist';

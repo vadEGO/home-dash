@@ -26,25 +26,25 @@
  <main id="pages">
   <section id="page-home" class="page home-page active" aria-label="Home">
    <aside class="weather-panel">
-    <div class="eyebrow">SYDNEY <span class="sample-tag">DEMO WEATHER</span></div>
-    <div class="temperature"><svg class="weather-sun"><use href="#sun"/></svg><span>22<span class="degree">°</span></span></div>
-    <div class="conditions">Mostly sunny</div><div class="range">H 24° <span>/</span> L 16°</div>
+    <div class="eyebrow">SYDNEY <span id="weather-status" class="sample-tag">DEMO WEATHER</span></div>
+    <div class="temperature"><svg class="weather-sun"><use href="#sun"/></svg><span id="weather-temperature">22°</span></div>
+    <div id="weather-conditions" class="conditions">Mostly sunny</div><div id="weather-range" class="range">H 24° <span>/</span> L 16°</div>
     <div class="family-title eyebrow">FAMILY TIME <span class="live-dot" title="Live device clock"></span></div>
     <div id="family-clocks"></div>
    </aside>
    <div class="watch-panel">
-    <div class="section-title"><h1>WATCHLIST</h1><span class="sample-tag">DEMO DATA · RESEARCH ONLY</span></div>
+    <div class="section-title"><h1>WATCHLIST</h1><span class="sample-tag market-status">DEMO DATA · RESEARCH ONLY</span></div>
     <div class="watch-head watch-grid"><span>ASSET</span><span>PRICE · USD</span><span>SCORE</span><span>BIAS</span><span>7D</span></div>
     <div id="watch-scroll" tabindex="0" aria-label="Watchlist. Touch to pause automatic scrolling."><div id="watch-rows"></div></div>
-    <div class="watch-footer"><span id="scroll-status">↕ AUTO SCROLL</span><span>Sample quotes <span class="sep">/</span> <span class="aged">Sample research</span></span></div>
+    <div class="watch-footer"><span id="scroll-status">↕ AUTO SCROLL</span><span id="market-freshness">Sample quotes / Sample research</span></div>
    </div>
   </section>
   <section id="page-ideas" class="page" aria-label="Trade ideas">
-   <div class="section-title"><h1>IDEAS <span class="heading-note">/ MONEYTRAIL PREVIEW</span></h1><span class="sample-tag">DEMO DATA · RESEARCH ONLY</span></div>
+   <div class="section-title"><h1>IDEAS <span class="heading-note">/ MONEYTRAIL</span></h1><span class="sample-tag market-status">DEMO DATA · RESEARCH ONLY</span></div>
    <div class="idea-columns"><div><div class="eyebrow idea-heading">01 / TOP RANKED</div><div id="top-ideas"></div></div><div><div class="eyebrow idea-heading">02 / RECENTLY CHANGED</div><div id="changed-ideas"></div></div></div>
   </section>
   <section id="page-briefings" class="page" aria-label="Hermes briefings">
-   <div class="section-title"><h1>BRIEFINGS <span class="heading-note">/ FROM HERMES</span></h1><span class="sample-tag">DEMO CONTENT · NOT CONNECTED</span></div>
+   <div class="section-title"><h1>BRIEFINGS <span class="heading-note">/ FROM HERMES</span></h1><span id="briefings-status" class="sample-tag">DEMO CONTENT · NOT CONNECTED</span></div>
    <div id="briefing-list"></div>
   </section>
  </main>
@@ -65,7 +65,7 @@
  </div>
  <p class="settings-note">Touch pauses scrolling for 15 seconds. Page rotation waits for the watchlist to finish. Clocks use your phone's time and each city's time zone.</p>
  <div class="demo-controls"><button id="demo-reminder">Show demo reminder</button><span id="sun-times"></span></div>
- <p class="settings-note">Prototype 0.1 · No live weather, market or Hermes connection. Reminders here are local demonstrations. Screen stays awake while charging; normal phone timeout applies on battery.</p>
+ <div class="demo-controls"><button id="connect-mac">Connect to Hermes Mac</button><button id="refresh-data">Refresh</button></div><p id="connection-status" class="settings-note">Not paired · displaying demo data.</p><p class="settings-note">Preview 0.2 · Weather by Open-Meteo. Market data by MoneyTrail. Screen stays awake while charging; normal timeout applies on battery.</p>
 </dialog>
-<script src="core.js"></script><script src="app.js"></script>
+<script src="core.js"></script><script src="app.js"></script><script src="live.js"></script>
 </body></html>

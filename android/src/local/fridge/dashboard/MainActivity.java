@@ -16,6 +16,7 @@ import android.webkit.WebResourceRequest;
 
 public class MainActivity extends Activity {
     private WebView web;
+    private DashboardConnection connection;
     private final BroadcastReceiver battery = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             if (intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0) {
@@ -40,6 +41,8 @@ public class MainActivity extends Activity {
                 return true; // Bundled prototype never navigates to external content.
             }
         });
+        connection = new DashboardConnection(this, web);
+        web.addJavascriptInterface(connection, "DashboardNative");
         setContentView(web);
         registerReceiver(battery, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         web.loadUrl("file:///android_asset/index.html");
@@ -65,6 +68,8 @@ public class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         unregisterReceiver(battery);
+        connection.close();
+        web.removeJavascriptInterface("DashboardNative");
         web.destroy();
         super.onDestroy();
     }
