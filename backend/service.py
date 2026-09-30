@@ -83,7 +83,19 @@ def normalize(row, siblings):
         reviewed_at=row.get('review_last_checked_at'), source_updated_at=row.get('updated_at'),
         source_url=row.get('source_url'), source=row.get('source'),
         conflict=len({str(r.get('direction')).lower() for r in siblings} & {'long', 'short'}) == 2,
-        values=[], change=None, chart_as_of=None, chart_status='unavailable')
+        values=[], change=None, chart_as_of=None, chart_status='unavailable',
+        **{key: number(row.get(key)) for key in ('ideal_entry', 'entry_min', 'entry_max',
+            'do_not_chase_above', 'stop_loss', 'take_profit_1', 'take_profit_2', 'take_profit_3',
+            'thesis_score', 'entry_score', 'risk_reward_score', 'catalyst_score', 'source_score',
+            'liquidity_score', 'portfolio_fit_score')},
+        **{key: row.get(key) for key in ('what_to_watch', 'invalidation', 'next_action',
+            'trailing_exit_trigger', 'expires_at', 'levels_last_revalidated_at',
+            'levels_freshness_status', 'levels_review_reason', 'actionability_status',
+            'actionability_reason', 'evidence_review_reason')},
+        source_details=[{key: detail.get(key) for key in ('source', 'source_url', 'author', 'notes', 'confirmed_at')}
+            for detail in (row.get('source_details') or []) if isinstance(detail, dict)],
+        other_views=[{key: other.get(key) for key in ('id', 'title', 'direction', 'thesis', 'invalidation', 'source', 'source_url')}
+            for other in sorted(siblings, key=primary_key) if other.get('id') != row.get('id')][:8])
 
 def chart(candles, now):
     # Eight daily closes span seven days. Do not label a partial/stale series "7D".
@@ -165,9 +177,12 @@ class Store:
                 with self.lock:
                     baseline = self.db.execute("SELECT 1 FROM cache WHERE name='market' AND payload IS NOT NULL").fetchone() is not None
                     for a in data['ideas']:
-                        sig = json.dumps([a.get(k) for k in ('id','score','bias','state','thesis','why_now','evidence_as_of')], sort_keys=True)
+                        sig = json.dumps([a.get(k) for k in ('id','score','bias','state','thesis','why_now','evidence_as_of','ideal_entry','entry_min','entry_max','stop_loss','take_profit_1','take_profit_2','take_profit_3','do_not_chase_above','invalidation','what_to_watch','trailing_exit_trigger')], sort_keys=True)
                         old = self.db.execute('SELECT signature,changed FROM changes WHERE symbol=?', (a['symbol'],)).fetchone()
-                        changed = stamp() if (old and old[0] != sig) or (not old and baseline) else old[1] if old else None
+                        # Added detail fields establish a baseline on upgrade; don't
+                        # report a schema extension as changed research.
+                        different = old and json.loads(old[0]) != json.loads(sig)[:len(json.loads(old[0]))]
+                        changed = stamp() if different or (not old and baseline) else old[1] if old else None
                         self.db.execute('INSERT OR REPLACE INTO changes VALUES (?,?,?)', (a['symbol'], sig, changed))
                         a['changed_at'] = changed
             with self.lock:

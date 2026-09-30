@@ -1,4 +1,4 @@
-# Home Dash — preview 0.2
+# Home Dash — preview 0.3
 
 Landscape fridge dashboard for an existing Solana Seeker, with a separate service on the dedicated Hermes Mac. No app store or Docker required.
 
@@ -7,6 +7,8 @@ Landscape fridge dashboard for an existing Solana Seeker, with a separate servic
 - Sydney weather from Open-Meteo, local clock and London / Marseille / Minsk clocks with DST handling.
 - MoneyTrail watchlist with original composite scores, direction, quote/evidence timestamps and conflict flags. Missing values remain unavailable.
 - Seven-day sparklines when eight consecutive recent daily closes are accessible. No synthetic production charts.
+- Boxed trade ideas with entry/thesis previews. Tap for Overview, Levels, Thesis and Sources, with previous/next navigation.
+- Entry zone, stop, three targets, no-chase threshold, invalidation, alternative views (up to eight), source details and score breakdown, preserving supplied values and freshness.
 - Top current ideas and substantive changes observed since the initial baseline.
 - Hermes briefings published through a local CLI; unread state and scrolling header ticker.
 - Light/dark themes, approximate Sydney sunrise/sunset switching, slow watchlist scrolling, touch pause, swipe navigation and optional page rotation.
@@ -26,7 +28,7 @@ bash scripts/build-apk.sh
 ~/Library/Android/sdk/platform-tools/adb shell am start -n local.fridge.dashboard/.MainActivity
 ```
 
-`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.2.0-preview`; filename retains the prototype name.
+`ANDROID_HOME` and `JAVA_HOME` override the default SDK/JDK paths. Preserve `.signing/prototype.keystore` for in-place updates. It is a **development-only** key with a known password, excluded from Git. Production signing needs a separately managed key and migration decision before wider distribution. APK version: `0.3.0-preview`; filename retains the prototype name.
 
 ## Service and tests
 
@@ -38,6 +40,7 @@ node --test tests/core.test.cjs
 # Optional: Playwright + Chromium, used only for UI testing.
 node tests/ui-check.cjs
 node tests/live-ui-check.cjs
+node tests/trade-details-check.cjs
 ```
 
 Set `PLAYWRIGHT_MODULE` to an existing module path if using a shared runtime. HTTPS tests create a temporary localhost service and certificate, then remove them; they do not install launchd jobs. Backend tests cover source failure/cache retention, timestamp preservation, missing data, chart completeness, ranking, change detection, pagination, auth rejection, TLS trust, deployment state preservation and briefing validation.
@@ -46,7 +49,7 @@ Set `PLAYWRIGHT_MODULE` to an existing module path if using a shared runtime. HT
 
 The MoneyTrail adapter uses `public_opportunity_action_board`, matching the inspected dashboard read model. For each watchlist symbol it selects by action state, descending score, confirmations, then ID. The watchlist can include research needing review; detail views show original statuses and timestamps. Ideas require MoneyTrail's current-idea freshness fields, a positive price and a quote no older than seven days, then rank by composite score. The app does not calculate investment scores or place trades.
 
-Price, evidence, review and fetch timestamps remain separate. MoneyTrail does not expose a dedicated score calculation time here. The seven-day change uses daily closes rather than the current quote, and disappears if that history becomes old. The first sync establishes a change baseline; subsequent changes to the selected idea, score, bias, state, thesis, rationale or evidence confirmation time qualify. Export time alone does not.
+Price, evidence, review and fetch timestamps remain separate. MoneyTrail does not expose a dedicated score calculation time here. The seven-day change uses daily closes rather than the current quote, and disappears if that history becomes old. The first sync establishes a change baseline; subsequent changes to the selected idea, score, bias, state, thesis, rationale evidence confirmation time, entry/exit levels or invalidation qualify. Export time alone does not.
 
 Fetch intervals default to 15 minutes on the Mac and one minute on the phone. They do not control MoneyTrail's upstream research or price updates. Open-Meteo attribution appears in Settings. Weather is fixed to central Sydney.
 

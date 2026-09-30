@@ -35,20 +35,14 @@ function renderLive(){
   const trend=make('span',`trend ${finite(a.change)?a.change>=0?'up':'down':''}`);
   const chartTime=Date.parse(a.chart_as_of),hasChart=finite(a.change)&&a.values?.length>=2&&Number.isFinite(chartTime)&&Date.now()-chartTime<2*86400000;
   if(hasChart){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),line=document.createElementNS('http://www.w3.org/2000/svg','polyline');svg.setAttribute('viewBox','0 0 100 26');svg.setAttribute('class','spark');line.setAttribute('points',C.sparkline(a.values));svg.append(line);trend.append(svg,make('span','change',`${a.change>0?'+':''}${a.change.toFixed(1)}%`));}else trend.append(make('span','change','—'));
-  row.append(trend);row.onclick=()=>showDetail('MONEYTRAIL · RESEARCH ONLY',a.symbol,[
-   `Score: ${a.score??'unavailable'} / 100. Direction: ${a.bias}.${a.conflict?' Conflicting long and short research exists.':''}`,
-   `Quote: ${a.price_as_of||'unknown'} (${age(a.price_as_of)}). Provider status: ${a.price_status||'unknown'}. Source: ${a.price_source||'unknown'}.`,
-   `Evidence confirmed: ${a.evidence_as_of||'unknown'} (${a.evidence_status||'unknown'}). Review: ${a.reviewed_at||'unknown'}.`,
-   'Score calculation time is not supplied by MoneyTrail; a service refresh does not make the score newer.',
-   `Chart: ${hasChart?'seven-day return between daily closes':a.chart_status||'unavailable'}. Last close: ${a.chart_as_of||'unavailable'}.`,a.thesis||a.why_now||'No thesis supplied.'
-  ]);$('watch-rows').append(row);
+  row.append(trend);row.onclick=()=>openTradeIdea(a,rows);$('watch-rows').append(row);
  });
  $('watch-scroll').scrollTop=scrollTop;
  $('top-ideas').replaceChildren();$('changed-ideas').replaceChildren();
  // Cache ages independently of fetch status. Never keep expired ideas in "top ranked".
  const ideas=(m?.data?.ideas||[]).filter(a=>{const t=Date.parse(a.price_as_of);return Number.isFinite(t)&&Date.now()-t<=7*86400000&&Date.now()>=t;});
  const changed=ideas.filter(a=>Date.parse(a.changed_at)>Date.now()-7*86400000).sort((a,b)=>Date.parse(b.changed_at)-Date.parse(a.changed_at));
- function card(target,a){const b=make('button','idea-card');b.append(make('strong','idea-symbol',`${a.symbol} · ${a.score??'—'} / 100 · ${a.bias}`),make('p','',a.why_now||a.title||'Research idea'),make('div','idea-meta',a.changed_at?`CHANGE OBSERVED ${age(a.changed_at)}`:`EVIDENCE ${age(a.evidence_as_of)}`));b.onclick=()=>showDetail('MONEYTRAIL · RESEARCH ONLY',a.title||a.symbol,[a.thesis||a.why_now||'No thesis supplied.',`Evidence: ${a.evidence_as_of||'unknown'}. Quote: ${a.price_as_of||'unknown'}.`,a.conflict?'Conflicting directions exist for this asset.':'',`Source: ${a.source||'MoneyTrail'}. ${a.source_url||''}`]);$(target).append(b);}
+ function card(target,a){$(target).append(tradeCard(a,ideas));}
  ideas.slice(0,2).forEach(a=>card('top-ideas',a));changed.slice(0,2).forEach(a=>card('changed-ideas',a));
  if(!ideas.length)$('top-ideas').append(make('p','settings-note','No current ideas with complete fresh evidence, price, levels and review.'));
  if(!changed.length)$('changed-ideas').append(make('p','settings-note','No meaningful changes observed yet. The first sync establishes a baseline.'));
@@ -69,5 +63,5 @@ $('connect-mac').onclick=()=>window.DashboardNative?window.DashboardNative.confi
 $('refresh-data').onclick=()=>window.DashboardNative?.refresh();
 try{const saved=JSON.parse(localStorage.getItem('live-dashboard')||'null');if(saved?.snapshot?.version===1){snapshot=saved.snapshot;receivedAt=saved.receivedAt;transport='connecting';renderLive();}}catch(e){}
 if(window.DashboardNative?.isConfigured?.()&&!window.liveMode){transport='connecting';renderLive();}
-window.DashboardNative?.refresh();
+setTimeout(()=>window.DashboardNative?.refresh(),0);
 setInterval(()=>{if(window.liveMode)renderLive();window.DashboardNative?.refresh();},60000);

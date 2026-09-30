@@ -33,6 +33,31 @@ class BackendTests(unittest.TestCase):
     def test_missing_score_and_conflicts(self):
         result=s.normalize({'symbol':'BTC','total_score':None,'current_price':-1},[{'direction':'long'},{'direction':'short'}])
         self.assertIsNone(result['score']);self.assertIsNone(result['price']);self.assertTrue(result['conflict'])
+    def test_detail_fields_preserve_values_and_missing_levels(self):
+        row=dict(id='a',symbol='SOL',entry_min=112,entry_max=118,stop_loss=104,
+                 take_profit_1=140,what_to_watch='Activity',invalidation='Support fails',
+                 levels_freshness_status='stale',source_details=[{'source':'Report','author':'Analyst'}])
+        opposite=dict(id='b',direction='short',thesis='Opposing case')
+        result=s.normalize(row,[row,opposite])
+        self.assertEqual(result['entry_min'],112)
+        self.assertEqual(result['stop_loss'],104)
+        self.assertIsNone(result['take_profit_3'])
+        self.assertEqual(result['levels_freshness_status'],'stale')
+        self.assertEqual(result['other_views'][0]['thesis'],'Opposing case')
+        self.assertEqual(result['source_details'][0]['author'],'Analyst')
+    def test_schema_extension_is_not_a_research_change_but_level_edit_is(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store=s.Store(directory)
+            a={'id':'a','symbol':'SOL','score':89,'bias':'LONG','entry_min':112}
+            old=json.dumps([a.get(k) for k in ('id','score','bias','state','thesis','why_now','evidence_as_of')])
+            store.db.execute('INSERT INTO changes VALUES (?,?,NULL)',('SOL',old))
+            store.db.commit()
+            store.refresh('market',lambda:{'ideas':[dict(a)],'assets':[]})
+            self.assertIsNone(store.snapshot()['providers']['market']['data']['ideas'][0]['changed_at'])
+            a['entry_min']=113
+            store.refresh('market',lambda:{'ideas':[dict(a)],'assets':[]})
+            self.assertIsNotNone(store.snapshot()['providers']['market']['data']['ideas'][0]['changed_at'])
+            store.db.close()
     def test_primary_selection_matches_state_then_score(self):
         rows=[{'id':'a','action_state':'research','total_score':99},{'id':'b','action_state':'ready','total_score':80}]
         self.assertEqual(sorted(rows,key=s.primary_key)[0]['id'],'b')

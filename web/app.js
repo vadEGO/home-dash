@@ -25,6 +25,7 @@ try{reminder=JSON.parse(localStorage.getItem('demo-reminder')||'null');}catch(e)
 function persistReminder(){try{localStorage.setItem('demo-reminder',JSON.stringify(reminder));}catch(e){}}
 function make(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;}
 function showDetail(label,title,paragraphs,actions=[]){
+ $('detail').classList.remove('trade-detail');
  $('detail-label').textContent=label;$('detail-title').textContent=title;$('detail-body').replaceChildren();$('detail-actions').replaceChildren();
  paragraphs.forEach(p=>$('detail-body').append(make('p','',p)));
  actions.forEach(a=>{const b=make('button','',a.title);b.onclick=a.run;$('detail-actions').append(b);});
@@ -42,7 +43,7 @@ assets.forEach(a=>{
 });
 [['SOL',89,'LONG','Consolidated research idea. Review the source evidence before interpreting the score.'],['BTC',89,'SHORT','High score, different direction. A ranking is not a buy instruction.']].forEach(a=>idea('top-ideas',a,false));
 [['ETH',87,'LONG','Illustrative change: composite score increased from 82 to 87.'],['SUI',89,'LONG','Illustrative change: new supporting research added.']].forEach(a=>idea('changed-ideas',a,true));
-function idea(target,a,changed){const b=make('button','idea-card'),top=make('div','idea-card-top');top.append(make('span','idea-symbol',a[0]),make('span',`bias ${a[2]==='LONG'?'up':'down'}`,a[2]));const score=make('span','idea-score',a[1]);score.append(make('small','',' /100'));top.append(score);b.append(top,make('p','',a[3]),make('div','idea-meta',changed?'DEMO CHANGE · SOURCE NOT CONNECTED':'RESEARCH · DEMO SCORE'));b.onclick=()=>showDetail('MONEYTRAIL PREVIEW · DEMO',a[0], [a[3],'Live rank, evidence age and price timestamps will come from MoneyTrail. No orders or agent actions are available in this version.']);$(target).append(b);}
+function idea(target,a,changed){const b=make('button','idea-card'),top=make('div','idea-card-top');top.append(make('span','idea-symbol',a[0]),make('span',`bias ${a[2]==='LONG'?'up':'down'}`,a[2]));const score=make('span','idea-score',a[1]);score.append(make('small','',' /100'));top.append(score);b.append(top,make('p','',a[3]),make('div','idea-meta',changed?'DEMO CHANGE · SOURCE NOT CONNECTED':'RESEARCH · DEMO SCORE'));b.onclick=()=>openTradeIdea(demoIdeas.find(x=>x.symbol===a[0]),demoIdeas,true);$(target).append(b);}
 function renderBriefings(){
  $('briefing-list').replaceChildren();briefings.forEach((b,i)=>{const row=make('button','briefing-row'),copy=make('div');copy.append(make('strong','',b.title),make('p','',b.sub));row.append(make('span','briefing-number',String(i+1).padStart(2,'0')),copy,make('span','new-label',readIds.includes(b.id)?'READ':'NEW'));row.onclick=()=>openBriefing(b);$('briefing-list').append(row);});
  const count=briefings.filter(b=>!readIds.includes(b.id)).length;$('unread').textContent=count||'';

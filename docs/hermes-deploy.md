@@ -1,4 +1,4 @@
-# Hermes deployment handoff — preview 0.2
+# Hermes deployment handoff — preview 0.3
 
 Deploy on the **dedicated Hermes Mac**, after user login. The development Mac does not host production. This adds a separate Python service; it does not modify Hermes, MoneyTrail, their databases, or their launch agents. No Docker, app store, or Python packages are required. A private venv is created from the Python interpreter you use.
 
@@ -54,7 +54,7 @@ If local curl requires Subject Alternative Names, use a verified Python SSL cont
 
 ## 3. Pair the Seeker
 
-The phone needs APK **0.2.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
+The phone needs APK **0.3.0-preview** or newer. On the dedicated Mac, in a **private local terminal**:
 
 ```sh
 python3 scripts/mac-service.py pairing
@@ -107,3 +107,7 @@ To stop: `launchctl bootout gui/$(id -u)/local.home-dash.service`. Remove the ma
 ## Report back, without secrets
 
 Return the deployed commit, Python version, launchd status, whether weather/market/chart reads succeed, row count and symbol list, observed quote/evidence age, and whether the phone recovered after Wi-Fi loss. Report permission errors without dumping keys or headers. Real MoneyTrail access, the dedicated Mac launchd lifecycle and phone-to-Mac LAN pairing must be validated there; development tests cannot establish those facts.
+
+## Trade detail update (0.3)
+
+Deploy this revision on the Mac as well as updating the phone to receive entry/exit levels, thesis, source score components and alternative views. Old snapshots remain readable with missing fields shown as unavailable. Level changes count as meaningful research changes; adding fields during the 0.2 → 0.3 upgrade alone does not. Source links remain text; execution and trading actions remain disabled. Test a real idea against MoneyTrail: entry range, stop, targets, thesis and level freshness should match exactly.
